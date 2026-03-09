@@ -506,3 +506,503 @@
     width: calc(100vw - 24px);
   }
 }
+
+/* ============================================
+   Newspaper theme override (black/white/gray)
+   ============================================ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg: #f7f7f5;
+  --bg-accent: #f2f2ef;
+  --bg-elevated: #ffffff;
+  --bg-hover: #ededea;
+  --bg-muted: #f1f1ee;
+  --bg-content: #f8f8f6;
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --card-highlight: rgba(0, 0, 0, 0.03);
+  --popover: #fffaf2;
+  --popover-foreground: #111111;
+  --panel: #f4f4f1;
+  --panel-strong: #ebebe8;
+  --panel-hover: #e3e3df;
+  --chrome: rgba(247, 247, 245, 0.96);
+  --chrome-strong: rgba(247, 247, 245, 0.98);
+  --text: #171717;
+  --text-strong: #000000;
+  --chat-text: #171717;
+  --muted: #4b4b4b;
+  --muted-strong: #333333;
+  --muted-foreground: #4b4b4b;
+  --border: #1f1f1f;
+  --border-strong: #000000;
+  --border-hover: #000000;
+  --input: #1f1f1f;
+  --ring: #d40920;
+  --accent: #d40920;
+  --accent-hover: #ae071a;
+  --accent-muted: #0047ab;
+  --accent-subtle: rgba(212, 9, 32, 0.1);
+  --accent-foreground: #ffffff;
+  --accent-glow: rgba(212, 9, 32, 0.12);
+  --primary: #d40920;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f2ef;
+  --secondary-foreground: #171717;
+  --accent-2: #0047ab;
+  --accent-2-muted: rgba(0, 71, 171, 0.65);
+  --accent-2-subtle: rgba(0, 71, 171, 0.1);
+  --ok: #0047ab;
+  --ok-muted: rgba(0, 71, 171, 0.6);
+  --ok-subtle: rgba(0, 71, 171, 0.1);
+  --destructive: #2d2d2d;
+  --destructive-foreground: #ffffff;
+  --warn: #f2c200;
+  --warn-muted: rgba(242, 194, 0, 0.62);
+  --warn-subtle: rgba(242, 194, 0, 0.14);
+  --danger: #2d2d2d;
+  --danger-muted: rgba(45, 45, 45, 0.62);
+  --danger-subtle: rgba(45, 45, 45, 0.12);
+  --info: #5a5a5a;
+  --focus: rgba(0, 0, 0, 0.16);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--ring);
+  --focus-glow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ring);
+  --grid-line: rgba(0, 0, 0, 0.08);
+  --font-body: "Georgia", "Times New Roman", "Songti SC", "Noto Serif SC", serif;
+  --font-display: "Georgia", "Times New Roman", "Songti SC", "Noto Serif SC", serif;
+  --mono: "Courier New", "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-glow: none;
+  color-scheme: light;
+}
+
+body {
+  background: #efefef;
+  letter-spacing: 0;
+}
+
+.topbar,
+.oneclaw-sidebar,
+.card,
+.chat-bubble,
+.list-item,
+.table-row,
+.stat,
+.log-stream,
+.oneclaw-feishu-notice {
+  box-shadow: none !important;
+}
+
+.topbar,
+.oneclaw-sidebar,
+.card,
+.stat,
+.list-item,
+.table-row,
+.chat-bubble {
+  border-color: var(--border) !important;
+}
+
+.brand-title,
+.page-title,
+.card-title,
+.oneclaw-sidebar__title {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+  font-weight: 700;
+}
+
+.page-title {
+  text-transform: uppercase;
+  font-size: 24px;
+}
+
+.oneclaw-sidebar {
+  background: #f6f6f6;
+}
+
+.oneclaw-sidebar__item.active,
+.nav-item.active,
+.config-nav__item.active {
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+.chat-bubble,
+.chat-line.user .chat-bubble,
+.chat-line.assistant .chat-bubble,
+.chat-group.user .chat-bubble {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+}
+
+.btn.primary,
+.btn-primary,
+.agent-tab.active,
+.config-mode-toggle__btn.active,
+.provider-tab.active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #ffffff !important;
+}
+
+.btn,
+.btn-secondary,
+.btn-ghost,
+.oneclaw-sidebar__item,
+.nav-item {
+  border-radius: 3px !important;
+}
+
+/* Stronger newspaper look */
+.oneclaw-sidebar__brand {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.oneclaw-sidebar__title {
+  letter-spacing: 0.08em !important;
+  font-size: 13px !important;
+}
+
+.oneclaw-sidebar__brand::after {
+  content: "THE OPENCLAW TIMES";
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.content,
+.oneclaw-content {
+  background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.03));
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+}
+
+.chat-thread {
+  border-top: 2px solid #111111;
+  padding-top: 14px;
+}
+
+.chat-text {
+  font-size: 15px !important;
+  line-height: 1.68 !important;
+}
+
+.chat-text :where(p) {
+  text-align: justify;
+}
+
+.chat-divider__label {
+  border-radius: 0 !important;
+  background: #ffffff !important;
+}
+
+.card,
+.stat,
+.list-item,
+.table-row,
+.log-stream,
+.chat-bubble {
+  border-radius: 0 !important;
+}
+
+.page-sub,
+.brand-sub {
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase;
+}
+
+/* Newspaper dashboard-like structure */
+.oneclaw-shell {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto 1fr !important;
+  background: #e6e6e6 !important;
+}
+
+.oneclaw-sidebar {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 58px;
+  border-right: none !important;
+  border-bottom: 2px solid #111 !important;
+  background: #f1f1f1 !important;
+  flex-direction: row !important;
+  align-items: stretch;
+}
+
+.oneclaw-sidebar__brand {
+  min-width: 230px;
+  border-bottom: none !important;
+  border-right: 1px solid var(--border);
+  padding: 10px 14px !important;
+}
+
+.oneclaw-sidebar__brand::after {
+  margin-top: 4px;
+}
+
+.oneclaw-sidebar__nav {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 4px !important;
+  padding: 8px 10px !important;
+  overflow-x: auto;
+}
+
+.oneclaw-sidebar__section {
+  display: contents !important;
+}
+
+.oneclaw-sidebar__section-title,
+.oneclaw-sidebar__divider,
+.oneclaw-sidebar__collapse {
+  display: none !important;
+}
+
+.oneclaw-sidebar__item {
+  border: 1px solid transparent !important;
+  border-radius: 0 !important;
+  padding: 8px 12px !important;
+}
+
+.oneclaw-sidebar__item.active {
+  border-color: #111 !important;
+  background: #fff !important;
+  box-shadow: inset 0 -3px 0 var(--accent-2);
+}
+
+.oneclaw-main {
+  height: auto !important;
+}
+
+.oneclaw-content {
+  background: #e6e6e6 !important;
+  padding: 16px !important;
+}
+
+.oneclaw-content > .card.chat,
+.chat,
+.chat-thread,
+.chat-compose {
+  background: transparent !important;
+}
+
+.chat-thread {
+  border-top: 3px solid #111 !important;
+}
+
+.chat-thread {
+  border-top: none !important;
+}
+
+.chat-group.assistant .chat-bubble {
+  background: rgba(0, 71, 171, 0.08) !important;
+  border-color: #111 !important;
+}
+
+.card,
+.stat,
+.list-item,
+.table-row,
+.chat-bubble,
+.chat-tool-card,
+.chat-queue {
+  border: 2px solid #111 !important;
+  background: #fdfdfd !important;
+}
+
+.stat-value.ok,
+.stat-value.warn,
+.pill.danger,
+.log-level.info,
+.log-level.warn,
+.log-level.error {
+  color: #111 !important;
+  border-color: #111 !important;
+}
+
+/* Bring settings entry back in top header */
+.oneclaw-sidebar__footer {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px !important;
+  border-top: none !important;
+  border-left: 1px solid var(--border);
+}
+
+.oneclaw-sidebar__status-row,
+.oneclaw-sidebar__item--update {
+  display: none !important;
+}
+
+.oneclaw-sidebar__item--settings {
+  display: inline-flex !important;
+  align-items: center;
+  border: 1px solid transparent !important;
+  padding: 8px 12px !important;
+}
+
+/* LXGW WenKai font family */
+@font-face {
+  font-family: "LXGW WenKai";
+  src: url("../../../assets/fonts/LXGWWenKai-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "LXGW WenKai";
+  src: url("../../../assets/fonts/LXGWWenKai-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "LXGW WenKai";
+  src: url("../../../assets/fonts/LXGWWenKai-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "LXGW WenKai Mono";
+  src: url("../../../assets/fonts/LXGWWenKaiMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "LXGW WenKai Mono";
+  src: url("../../../assets/fonts/LXGWWenKaiMono-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Ysabeau";
+  src: url("../../../assets/fonts/Ysabeau-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ysabeau";
+  src: url("../../../assets/fonts/Ysabeau-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Monaspace Argon";
+  src: url("../../../assets/fonts/MonaspaceArgonFrozen-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Monaspace Argon";
+  src: url("../../../assets/fonts/MonaspaceArgonFrozen-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LXGW Bright Code";
+  src: url("../../../assets/fonts/LXGWBrightCode-ExtraLight.ttf") format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LXGW Bright Code";
+  src: url("../../../assets/fonts/LXGWBrightCode-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root,
+:root[data-theme=light],
+:root[data-theme=dark] {
+  --font-body: "LXGW WenKai", "Georgia", "Times New Roman", "Songti SC", "Noto Serif SC", serif;
+  --font-display: "LXGW WenKai", "Georgia", "Times New Roman", "Songti SC", "Noto Serif SC", serif;
+  --mono: "LXGW WenKai Mono", "Courier New", "SF Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-body);
+}
+
+/* Typography policy:
+   - Chinese: LXGW WenKai
+   - English body: Ysabeau
+   - Code: Monaspace Argon / LXGW Bright Code fallback
+*/
+:root,
+:root[data-theme=light],
+:root[data-theme=dark] {
+  --font-body: "Ysabeau", "LXGW WenKai", "Georgia", "Times New Roman", "Songti SC", "Noto Serif SC", serif;
+  --font-display: "Ysabeau", "LXGW WenKai", "Georgia", "Times New Roman", "Songti SC", "Noto Serif SC", serif;
+  --mono: "Monaspace Argon", "LXGW Bright Code", "LXGW WenKai Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+code,
+pre,
+kbd,
+samp,
+textarea[class*="code"],
+.chat-tool-card code,
+.chat-tool-card pre {
+  font-family: var(--mono) !important;
+}
+
+/* 聊天输入区改为直角，贴合报纸版式 */
+.chat-compose textarea,
+.chat-compose input,
+.chat-compose .btn,
+.chat-compose .btn-kbd,
+.chat-compose .chat-compose__field {
+  border-radius: 0 !important;
+}
+
+/* 发送按钮与输入框高度统一 */
+.chat-compose__row {
+  align-items: flex-end !important;
+}
+
+.chat-compose .chat-compose__field textarea {
+  min-height: 44px !important;
+  height: auto !important;
+  max-height: 160px !important;
+}
+
+.chat-compose .chat-compose__actions {
+  align-items: stretch !important;
+}
+
+.chat-compose .chat-compose__actions .btn {
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 16px !important;
+}

@@ -1,5 +1,5 @@
 // ============================================
-// OneClaw Settings — 双栏设置交互逻辑
+// OpenClaw Settings — 双栏设置交互逻辑
 // ============================================
 
 (function () {
@@ -76,6 +76,8 @@
       "provider.modelId": "Model ID",
       "provider.apiType": "API Type",
       "provider.supportImage": "Supports image input",
+      "provider.showMore": "Show more",
+      "provider.showLess": "Show less",
       "common.cancel": "Cancel",
       "common.confirm": "Confirm",
       "common.saved": "Saved. Refreshing Gateway.",
@@ -150,7 +152,7 @@
       "nav.appearance": "Appearance",
       "nav.backup": "Backup & Restore",
       "kimi.title": "KimiClaw",
-      "kimi.desc": "Control OneClaw remotely via Kimi",
+      "kimi.desc": "Control OpenClaw remotely via Kimi",
       "kimi.enabled": "Enable",
       "kimi.getGuide": "Go to kimi.com/bot →",
       "kimi.guideText": "Click 'Associate existing OpenClaw' → copy command → paste below",
@@ -192,7 +194,7 @@
       "advanced.cliUninstallDone": "CLI command uninstalled.",
       "advanced.cliUnavailable": "CLI action is not available in this app version.",
       "advanced.cliOpFailed": "CLI operation failed.",
-      "advanced.cliUninstallConfirm": "Uninstall the OneClaw terminal command now?",
+      "advanced.cliUninstallConfirm": "Uninstall the OpenClaw terminal command now?",
       "advanced.save": "Save",
       "advanced.saving": "Saving…",
       "appearance.title": "Appearance",
@@ -251,6 +253,8 @@
       "provider.modelId": "模型 ID",
       "provider.apiType": "接口类型",
       "provider.supportImage": "支持图像输入",
+      "provider.showMore": "展开更多",
+      "provider.showLess": "收起更多",
       "common.cancel": "取消",
       "common.confirm": "确认",
       "common.saved": "已保存. 正在刷新 Gateway",
@@ -325,7 +329,7 @@
       "nav.appearance": "外观显示",
       "nav.backup": "备份恢复",
       "kimi.title": "KimiClaw",
-      "kimi.desc": "通过 Kimi 远程遥控 OneClaw",
+      "kimi.desc": "通过 Kimi 远程遥控 OpenClaw",
       "kimi.enabled": "启用状态",
       "kimi.getGuide": "前往 kimi.com/bot →",
       "kimi.guideText": '点击"关联已有 OpenClaw" → 复制命令 → 粘贴到下方输入框',
@@ -367,7 +371,7 @@
       "advanced.cliUninstallDone": "CLI 命令已卸载。",
       "advanced.cliUnavailable": "当前应用版本不支持该 CLI 操作。",
       "advanced.cliOpFailed": "CLI 操作失败。",
-      "advanced.cliUninstallConfirm": "确认要卸载 OneClaw 终端命令吗？",
+      "advanced.cliUninstallConfirm": "确认要卸载 OpenClaw 终端命令吗？",
       "advanced.save": "保存",
       "advanced.saving": "保存中…",
       "appearance.title": "外观显示",
@@ -424,6 +428,7 @@
     tabPanels: $$(".tab-panel"),
     // Provider tab
     providerTabs: $("#providerTabs"),
+    providerTabsToggle: $("#providerTabsToggle"),
     platformLink: $("#platformLink"),
     subPlatformGroup: $("#subPlatformGroup"),
     baseURLGroup: $("#baseURLGroup"),
@@ -525,6 +530,7 @@
   // ── 状态 ──
 
   let currentProvider = "anthropic";
+  let providerTabsExpanded = false;
   let saving = false;
   let chSaving = false;
   let chPairingLoading = false;
@@ -554,6 +560,7 @@
     channel: "channels",
     feishu: "channels",
   };
+  const COLLAPSIBLE_PROVIDERS = ["anthropic", "openai", "google"];
 
   // ── 语言 ──
 
@@ -589,7 +596,24 @@
       els.btnChAccessAddGroup.setAttribute("title", t("feishu.addGroup"));
       els.btnChAccessAddGroup.setAttribute("aria-label", t("feishu.addGroup"));
     }
+    updateProviderTabsVisibility();
   }
+  function isCollapsibleProvider(provider) {
+    return COLLAPSIBLE_PROVIDERS.indexOf(String(provider || "")) >= 0;
+  }
+
+  function updateProviderTabsVisibility() {
+    var tabs = Array.from(document.querySelectorAll(".provider-tab--advanced"));
+    tabs.forEach(function (tab) {
+      var shouldShow = providerTabsExpanded || tab.classList.contains("active");
+      tab.classList.toggle("is-collapsed", !shouldShow);
+    });
+    if (els.providerTabsToggle) {
+      els.providerTabsToggle.textContent = providerTabsExpanded ? t("provider.showLess") : t("provider.showMore");
+      els.providerTabsToggle.setAttribute("aria-expanded", providerTabsExpanded ? "true" : "false");
+    }
+  }
+
 
   // ── Tab 切换 ──
 
@@ -671,9 +695,15 @@
     currentProvider = provider;
     const config = PROVIDERS[provider];
 
+    if (isCollapsibleProvider(provider)) {
+      providerTabsExpanded = true;
+    }
+    updateProviderTabsVisibility();
+
     $$(".provider-tab").forEach((tab) => {
       tab.classList.toggle("active", tab.dataset.provider === provider);
     });
+    updateProviderTabsVisibility();
 
     els.apiKeyInput.placeholder = config.placeholder;
     hideMsg();
@@ -2422,6 +2452,12 @@
       var tab = e.target.closest(".provider-tab");
       if (tab) switchProvider(tab.dataset.provider);
     });
+    if (els.providerTabsToggle) {
+      els.providerTabsToggle.addEventListener("click", function () {
+        providerTabsExpanded = !providerTabsExpanded;
+        updateProviderTabsVisibility();
+      });
+    }
 
     // Moonshot 子平台切换
     if (els.subPlatformGroup) {
@@ -2650,7 +2686,7 @@
     applyI18n();
 
     bindEvents();
-    switchProvider("anthropic");
+    switchProvider("moonshot");
     switchTab(initialTab || "provider");
     applyRecoveryNotice(startupNotice);
     loadCurrentConfig();

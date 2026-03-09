@@ -52,7 +52,7 @@ export class WindowManager {
       minWidth: WINDOW_MIN_WIDTH,
       minHeight: WINDOW_MIN_HEIGHT,
       show: false,
-      title: "OneClaw",
+      title: "OpenClaw",
       autoHideMenuBar: true,
       webPreferences: {
         contextIsolation: true,
@@ -60,7 +60,7 @@ export class WindowManager {
         preload: path.join(__dirname, "preload.js"),
       },
     });
-    const title = "OneClaw";
+    const title = "OpenClaw";
     this.win.on("page-title-updated", (event) => {
       event.preventDefault();
       this.win?.setTitle(title);
@@ -230,7 +230,7 @@ export class WindowManager {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OneClaw - Error</title>
+  <title>OpenClaw - Error</title>
   <style>
     :root { color-scheme: light dark; }
     body {
@@ -266,7 +266,7 @@ export class WindowManager {
 <body>
   <main class="card">
     <h1>Chat UI not available</h1>
-    <p>OneClaw Chat UI 未能加载。请尝试重新启动应用。</p>
+    <p>OpenClaw Chat UI 未能加载。请尝试重新启动应用。</p>
     <button id="retryBtn" type="button">Retry</button>
   </main>
   <script>

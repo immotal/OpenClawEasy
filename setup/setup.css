@@ -672,3 +672,101 @@ select option {
     color: #fff;
   }
 }
+
+/* ============================================
+   Newspaper style override
+   ============================================ */
+:root {
+  --bg-primary: #efefef;
+  --bg-secondary: #f7f7f7;
+  --bg-card: #ffffff;
+  --bg-input: #f9f9f9;
+  --border: #cfcfcf;
+  --border-focus: #1f1f1f;
+  --text-primary: #101010;
+  --text-secondary: #4e4e4e;
+  --text-muted: #7a7a7a;
+  --accent: #111111;
+  --accent-hover: #2b2b2b;
+  --accent-dim: rgba(0, 0, 0, 0.06);
+  --error: #1f1f1f;
+  --error-bg: rgba(0, 0, 0, 0.06);
+}
+
+html,
+body {
+  font-family: "Georgia", "Times New Roman", "Songti SC", "Noto Serif SC", serif;
+  letter-spacing: 0;
+}
+
+h1,
+h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.step-content::before {
+  content: "THE OPENCLAW TIMES";
+  display: block;
+  margin-bottom: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+}
+
+.info-card,
+.error-msg,
+.btn-primary,
+.btn-secondary,
+.provider-tabs,
+.provider-tab,
+input,
+select {
+  border-radius: 0 !important;
+}
+
+.btn-primary,
+.provider-tab.active {
+  background: #111111 !important;
+  border-color: #111111 !important;
+  color: #ffffff !important;
+}
+
+/* LXGW WenKai font family */
+@font-face {
+  font-family: "LXGW WenKai";
+  src: url("../assets/fonts/LXGWWenKai-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "LXGW WenKai";
+  src: url("../assets/fonts/LXGWWenKai-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Ysabeau";
+  src: url("../assets/fonts/Ysabeau-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ysabeau";
+  src: url("../assets/fonts/Ysabeau-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+html,
+body,
+button,
+input,
+select {
+  font-family: "Ysabeau", "LXGW WenKai", "Georgia", "Times New Roman", "Songti SC", "Noto Serif SC", serif;
+}

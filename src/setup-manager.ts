@@ -17,7 +17,7 @@ export class SetupManager {
   showSetup(): void {
     // 标题本地化
     const lang = app.getLocale().startsWith("zh") ? "zh" : "en";
-    const title = lang === "zh" ? "OneClaw 安装引导" : "OneClaw Setup";
+    const title = lang === "zh" ? "OpenClaw 安装引导" : "OpenClaw Setup";
 
     this.setupWin = new BrowserWindow({
       width: 580,

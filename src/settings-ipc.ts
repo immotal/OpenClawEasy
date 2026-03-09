@@ -521,7 +521,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
           return { success: false, message: "Kimi Bot Token 不能为空。" };
         }
         if (!isKimiPluginBundled()) {
-          return { success: false, message: "Kimi Channel 组件缺失，请重新安装 OneClaw。" };
+          return { success: false, message: "Kimi Channel 组件缺失，请重新安装 OpenClaw。" };
         }
 
         const gatewayToken = ensureGatewayAuthTokenInConfig(config);
@@ -552,7 +552,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
     return runTrackedSettingsAction("save_kimi_search", { enabled }, async () => {
       try {
         if (enabled && !isKimiSearchPluginBundled()) {
-          return { success: false, message: "Kimi Search 组件缺失，请重新安装 OneClaw。" };
+          return { success: false, message: "Kimi Search 组件缺失，请重新安装 OpenClaw。" };
         }
         // 专属 key 存到 sidecar 文件，不写入 openclaw.json
         if (typeof apiKey === "string") {

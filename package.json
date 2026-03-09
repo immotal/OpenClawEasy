@@ -1,8 +1,8 @@
 {
-  "name": "OneClaw",
+  "name": "OpenClaw",
   "version": "2026.3.1",
   "private": true,
-  "description": "OneClaw desktop app — cross-platform Electron shell for openclaw",
+  "description": "OpenClaw desktop app — cross-platform Electron shell for openclaw",
   "main": "dist/main.js",
   "scripts": {
     "build:chat": "cd chat-ui/ui && npm install --prefer-offline && npx vite build",

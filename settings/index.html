@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';">
-  <title>OneClaw</title>
+  <title>OpenClaw</title>
   <link rel="stylesheet" href="settings.css">
 </head>
 <body>
@@ -83,12 +83,15 @@
         <div class="current-provider-status hidden" id="currentProviderStatus"></div>
 
         <!-- Provider 分段选择器 -->
-        <div class="provider-tabs" id="providerTabs">
-          <button class="provider-tab active" data-provider="anthropic">Anthropic</button>
-          <button class="provider-tab" data-provider="moonshot">Kimi</button>
-          <button class="provider-tab" data-provider="openai">OpenAI</button>
-          <button class="provider-tab" data-provider="google">Google</button>
-          <button class="provider-tab" data-provider="custom" data-i18n="provider.custom">Custom</button>
+        <div class="provider-tabs-row">
+          <div class="provider-tabs" id="providerTabs">
+            <button class="provider-tab provider-tab--advanced" data-provider="anthropic">Anthropic</button>
+            <button class="provider-tab active" data-provider="moonshot">Kimi</button>
+            <button class="provider-tab provider-tab--advanced" data-provider="openai">OpenAI</button>
+            <button class="provider-tab provider-tab--advanced" data-provider="google">Google</button>
+            <button class="provider-tab" data-provider="custom" data-i18n="provider.custom">Custom</button>
+          </div>
+          <button class="btn-secondary provider-tabs-toggle" id="providerTabsToggle" type="button"></button>
         </div>
 
         <!-- Moonshot 子平台 -->
@@ -322,7 +325,7 @@
 
         <div class="channel-panel">
           <div class="channel-desc-row">
-            <p class="desc" data-i18n="kimi.desc">Control OneClaw remotely via Kimi</p>
+            <p class="desc" data-i18n="kimi.desc">Control OpenClaw remotely via Kimi</p>
             <a href="#" class="platform-link" id="kimiBotPageLink" data-i18n="kimi.getGuide">Go to kimi.com/bot →</a>
           </div>
 

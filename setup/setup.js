@@ -1,5 +1,5 @@
 // ============================================
-// OneClaw Setup — 三步向导交互逻辑
+// OpenClaw Setup — 三步向导交互逻辑
 // ============================================
 
 (function () {
@@ -50,8 +50,8 @@
   // ---- 国际化文案 ----
   const I18N = {
     en: {
-      title: "OneClaw Setup",
-      "welcome.title": "Welcome to OneClaw",
+      title: "OpenClaw Setup",
+      "welcome.title": "Welcome to OpenClaw",
       "welcome.subtitle": "Your intelligent desktop assistant powered by large language models. Let's get you set up in just a few steps.",
       "welcome.security.title": "Your keys stay local",
       "welcome.security.desc": "API keys are stored securely on your machine and never sent to any third-party server.",
@@ -70,7 +70,7 @@
       "config.verify": "Verify & Continue",
       "config.imageSupport": "Model supports image input",
       "done.title": "All Set!",
-      "done.subtitle": "OneClaw is ready. Here's what you can do:",
+      "done.subtitle": "OpenClaw is ready. Here's what you can do:",
       "done.feature1": "Chat with state-of-the-art language models",
       "done.feature2": "Generate and execute code in real time",
       "done.feature3": "Manage multiple conversations and contexts",
@@ -78,9 +78,9 @@
       "done.sessionMemory": "Auto-save session memory on /new",
       "done.launchAtLogin": "Launch at login",
       "done.installCli": "Add openclaw command to terminal PATH",
-      "done.start": "Start OneClaw",
+      "done.start": "Start OpenClaw",
       "done.starting": "Starting Gateway…",
-      "done.startFailed": "Gateway failed to start. Please click Start OneClaw to retry.",
+      "done.startFailed": "Gateway failed to start. Please click Start OpenClaw to retry.",
       "error.noKey": "Please enter your API key.",
       "error.noBaseUrl": "Please enter the Base URL.",
       "error.noModelId": "Please enter the Model ID.",
@@ -88,8 +88,8 @@
       "error.connection": "Connection error: ",
     },
     zh: {
-      title: "OneClaw 安装引导",
-      "welcome.title": "欢迎使用 OneClaw",
+      title: "OpenClaw 安装引导",
+      "welcome.title": "欢迎使用 OpenClaw",
       "welcome.subtitle": "基于大语言模型的智能桌面助手，只需几步即可完成配置。",
       "welcome.security.title": "密钥安全存储",
       "welcome.security.desc": "API 密钥安全存储在本地设备，绝不会发送到任何第三方服务器。",
@@ -108,7 +108,7 @@
       "config.verify": "验证并继续",
       "config.imageSupport": "模型支持图片输入",
       "done.title": "配置完成！",
-      "done.subtitle": "OneClaw 已就绪，你可以：",
+      "done.subtitle": "OpenClaw 已就绪，你可以：",
       "done.feature1": "与最先进的大语言模型对话",
       "done.feature2": "实时生成并执行代码",
       "done.feature3": "管理多个对话和上下文",
@@ -116,9 +116,9 @@
       "done.sessionMemory": "开新对话时自动保存会话记忆",
       "done.launchAtLogin": "开机启动",
       "done.installCli": "将 openclaw 命令添加到终端 PATH",
-      "done.start": "启动 OneClaw",
+      "done.start": "启动 OpenClaw",
       "done.starting": "正在启动 Gateway…",
-      "done.startFailed": 'Gateway 启动失败，请点击"启动 OneClaw"重试。',
+      "done.startFailed": 'Gateway 启动失败，请点击"启动 OpenClaw"重试。',
       "error.noKey": "请输入 API 密钥。",
       "error.noBaseUrl": "请输入接口地址。",
       "error.noModelId": "请输入模型 ID。",

@@ -199,7 +199,7 @@ function promptConfigRecovery(opts: {
 // Gateway 启动失败时提示用户进入备份恢复，避免反复重启无效。
 function reportGatewayStartFailure(source: string): RecoveryAction {
   const logPath = resolveGatewayLogPath();
-  const title = "OneClaw Gateway 启动失败";
+  const title = "OpenClaw Gateway 启动失败";
   const detail =
     `来源: ${source}\n` +
     `建议先前往设置 → 备份与恢复，回退到最近可用配置。\n` +
@@ -223,7 +223,7 @@ function reportConfigInvalidFailure(parseError?: string): RecoveryAction {
 
   log.error(`配置文件损坏，JSON 解析失败: ${parseError ?? "unknown"}`);
   return promptConfigRecovery({
-    title: "OneClaw 配置文件损坏",
+    title: "OpenClaw 配置文件损坏",
     message: "检测到 openclaw.json 不是有效 JSON，Gateway 无法启动。",
     detail,
   });
@@ -522,7 +522,7 @@ app.whenReady().then(async () => {
 
   // 下载进度 → 更新托盘 tooltip
   setProgressCallback((pct) => {
-    tray.setTooltip(pct != null ? `OneClaw — 下载更新 ${pct.toFixed(0)}%` : "OneClaw");
+    tray.setTooltip(pct != null ? `OpenClaw — 下载更新 ${pct.toFixed(0)}%` : "OpenClaw");
   });
 
   tray.create({

@@ -165,13 +165,21 @@ function handleSessionChange(state: AppViewState, nextSessionKey: string) {
 }
 
 function setOneClawView(state: AppViewState, next: "chat" | "settings") {
-  if ((state.settings.oneclawView ?? "chat") === next) {
+  const prev = state.settings.oneclawView ?? "chat";
+  if (prev === next) {
     return;
   }
   state.applySettings({
     ...state.settings,
     oneclawView: next,
   });
+
+  // 从设置页回到聊天页后，定位到最新消息，避免停留在会话开头。
+  if (prev === "settings" && next === "chat") {
+    void state.updateComplete.then(() => {
+      state.scrollToBottom();
+    });
+  }
 }
 
 // 打开内嵌设置页时可携带目标 tab 提示，减少用户二次定位成本。

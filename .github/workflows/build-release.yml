@@ -13,10 +13,6 @@ on:
 # package-resources.js 每次构建自动从 npm 拉取 openclaw latest stable
 env:
   ARTIFACT_RETENTION_DAYS: 3
-  # 埋点配置
-  ONECLAW_ANALYTICS_API_KEY: ${{ secrets.ONECLAW_ANALYTICS_API_KEY }}
-  ONECLAW_ANALYTICS_CAPTURE_URL: ${{ secrets.ONECLAW_ANALYTICS_CAPTURE_URL }}
-  ONECLAW_ANALYTICS_CAPTURE_FALLBACK_URL: ${{ secrets.ONECLAW_ANALYTICS_CAPTURE_FALLBACK_URL }}
 
 jobs:
   # ── macOS arm64：签名 + 公证 ──

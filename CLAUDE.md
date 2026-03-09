@@ -52,8 +52,7 @@ oneclaw/
 │   ├── launch-at-login.ts  # macOS/Windows launch at login toggle
 │   ├── feishu-pairing-monitor.ts  # Feishu pairing request polling + state
 │   ├── update-banner-state.ts     # Update banner pure state machine
-│   ├── analytics.ts        # Telemetry (PostHog-style, retry + fallback URL)
-│   ├── analytics-events.ts # Event classification + property sanitization
+│   ├── analytics.ts        # Telemetry API shim (currently no-op)
 │   ├── auto-updater.ts     # electron-updater wrapper + progress callback
 │   └── logger.ts           # Dual-write logger (file + console)
 ├── chat-ui/                # Lit-based Chat UI SPA (file:// loaded)
@@ -78,7 +77,7 @@ oneclaw/
 ├── .github/workflows/      # CI: build-release.yml + publish-share-copy.yml
 ├── electron-builder.yml    # Build config (DMG + ZIP for mac, NSIS for win)
 ├── tsconfig.json           # target ES2022, module CommonJS
-└── .env                    # Signing keys + analytics config (gitignored)
+└── .env                    # Signing keys (gitignored)
 ```
 
 **Generated at build time (all gitignored):**
@@ -369,7 +368,7 @@ Electron 40 defaults to sandbox mode. 42 IPC methods + 4 event listeners are exp
 │     ├── feishu-pairing-monitor.ts (pairing request polling)  │
 │     ├── update-banner-state.ts (update UI state machine)     │
 │     ├── gateway-rpc.ts (WebSocket RPC to gateway)            │
-│     ├── analytics.ts + analytics-events.ts (telemetry)       │
+│     ├── analytics.ts (telemetry shim, no-op)                 │
 │     ├── auto-updater.ts (CDN updates + progress)             │
 │     ├── gateway-auth.ts (token management)                   │
 │     └── logger.ts (file + console)                           │
