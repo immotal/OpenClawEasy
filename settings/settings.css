@@ -1345,3 +1345,248 @@ select {
 .backup-item-name {
   font-family: "Monaspace Argon", "LXGW Bright Code", "LXGW WenKai Mono", "SF Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
 }
+
+/* ============================================
+   OpenClaw unified settings style
+   Match chat page geometric visual language
+   ============================================ */
+
+:root {
+  --bg-primary: #f7f7f5;
+  --bg-secondary: #f2f0ea;
+  --bg-card: #ffffff;
+  --bg-input: #fdfcf8;
+  --border: #1f1f1f;
+  --border-focus: #d40920;
+  --text-primary: #111111;
+  --text-secondary: #2f2f2f;
+  --text-muted: #666666;
+  --accent: #d40920;
+  --accent-hover: #b1061a;
+  --accent-dim: rgba(212, 9, 32, 0.12);
+  --success: #0047ab;
+  --success-bg: rgba(0, 71, 171, 0.09);
+  --warning: #f2c200;
+  --warning-bg: rgba(242, 194, 0, 0.11);
+  --error: #d40920;
+  --error-bg: rgba(212, 9, 32, 0.1);
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+}
+
+html,
+body {
+  background:
+    linear-gradient(90deg, rgba(31, 31, 31, 0.04) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(rgba(31, 31, 31, 0.04) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.settings-layout {
+  gap: 0;
+}
+
+.sidebar {
+  width: 248px;
+  border-left: 2px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.sidebar-title {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.nav-list {
+  gap: 6px;
+}
+
+.nav-item {
+  border: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-weight: 600;
+}
+
+.nav-item:hover {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: #ffffff;
+  border: 2px solid var(--border);
+  color: var(--text-primary);
+  box-shadow: inset 0 -4px 0 var(--accent);
+}
+
+.content {
+  padding: 22px 24px;
+  background: transparent;
+}
+
+.content h2 {
+  font-size: 22px;
+  letter-spacing: 0;
+  font-weight: 700;
+  color: #121212;
+}
+
+.desc {
+  color: #3f3f3f;
+}
+
+.provider-tabs,
+.search-advanced,
+.pairing-panel,
+.backup-card,
+.msg-box,
+.dialog-card,
+.restart-banner,
+.backup-item,
+.current-provider-status,
+.field-group,
+.toggle-row {
+  border-radius: 0 !important;
+}
+
+.field-group,
+.toggle-row,
+.search-advanced,
+.pairing-panel,
+.backup-card {
+  border: 2px solid var(--border);
+  background: var(--bg-card);
+  padding: 12px 14px;
+}
+
+.toggle-row {
+  margin: 2px 0;
+}
+
+.provider-tabs {
+  border: 2px solid var(--border);
+  background: #f3f0e8;
+  padding: 10px;
+  gap: 10px;
+}
+
+.provider-tab {
+  min-height: 40px;
+  border: 2px solid var(--border);
+  color: var(--text-secondary);
+  background: #fff;
+  border-radius: 0;
+}
+
+.provider-tab:hover {
+  border-color: var(--border);
+  background: #f8f8f8;
+}
+
+.provider-tab.active {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.provider-tabs-toggle {
+  border-radius: 0;
+  border: 2px solid var(--border);
+  background: #fff;
+  min-height: 38px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="url"],
+textarea,
+select {
+  border: 2px solid var(--border);
+  background: var(--bg-input);
+  border-radius: 0;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(212, 9, 32, 0.16);
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-restart,
+.btn-ghost,
+.btn-icon {
+  border-radius: 0;
+  border-width: 2px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  color: #fff;
+  box-shadow: 3px 3px 0 rgba(31, 31, 31, 0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-secondary,
+.btn-ghost,
+.btn-icon {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled),
+.btn-icon:hover:not(:disabled) {
+  background: #f3f3f3;
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* Replace iOS-like switches with geometric industrial style */
+.toggle-switch {
+  width: 56px;
+  height: 28px;
+}
+
+.toggle-slider {
+  border-radius: 0;
+  border: 2px solid var(--border);
+  background: #efefef;
+}
+
+.toggle-slider::before {
+  border-radius: 0;
+  width: 20px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: #1f1f1f;
+  box-shadow: none;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: rgba(212, 9, 32, 0.2);
+  border-color: var(--accent);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(28px);
+  background: var(--accent);
+}

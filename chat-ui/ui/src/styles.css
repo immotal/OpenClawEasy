@@ -1006,3 +1006,134 @@ textarea[class*="code"],
   min-height: 44px !important;
   padding: 0 16px !important;
 }
+
+/* Send button: use settings-style hard shadow */
+.chat-compose .chat-compose__actions .btn.primary {
+  border: 2px solid var(--accent) !important;
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  box-shadow: 3px 3px 0 rgba(31, 31, 31, 0.25) !important;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 120ms ease !important;
+}
+
+.chat-compose .chat-compose__actions .btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+}
+
+.chat-compose .chat-compose__actions .btn.primary:active:not(:disabled) {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 2px 2px 0 rgba(31, 31, 31, 0.22) !important;
+}
+
+/* Keep composer field and send button visually same height */
+.chat-compose__row {
+  align-items: stretch !important;
+}
+
+.chat-compose .chat-compose__field textarea {
+  min-height: 46px !important;
+  height: 46px !important;
+  padding: 10px 12px !important;
+  box-sizing: border-box !important;
+}
+
+.chat-compose .chat-compose__actions .btn {
+  height: 46px !important;
+  min-height: 46px !important;
+  box-sizing: border-box !important;
+}
+
+/* Slightly softer shadow so height feels aligned with input */
+.chat-compose .chat-compose__actions .btn.primary {
+  box-shadow: 2px 2px 0 rgba(31, 31, 31, 0.22) !important;
+}
+
+/* Homepage top area: geometric hard-edge style */
+.oneclaw-sidebar {
+  border-bottom: 2px solid #1f1f1f !important;
+  background: #f2f0ea !important;
+}
+
+.oneclaw-sidebar__brand {
+  border-right: 2px solid #1f1f1f !important;
+  background: #ffffff !important;
+}
+
+.oneclaw-sidebar__nav {
+  background: #f2f0ea !important;
+}
+
+.oneclaw-sidebar__item {
+  border: 2px solid #1f1f1f !important;
+  background: #ffffff !important;
+  border-radius: 0 !important;
+}
+
+.oneclaw-sidebar__item.active {
+  box-shadow: inset 0 -4px 0 var(--accent) !important;
+}
+
+.content-header {
+  border: 2px solid #1f1f1f !important;
+  background: #ffffff !important;
+  padding: 10px 12px !important;
+  box-shadow: 4px 4px 0 rgba(31, 31, 31, 0.15);
+}
+
+/* Stylized OpenClaw brand block (top-left) */
+.oneclaw-sidebar__brand {
+  position: relative;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 12px 8px 10px !important;
+  border: 2px solid #1f1f1f !important;
+  border-right: 2px solid #1f1f1f !important;
+  box-shadow: 4px 4px 0 rgba(31, 31, 31, 0.15);
+  overflow: hidden;
+}
+
+.oneclaw-sidebar__brand::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  background: var(--accent);
+}
+
+.oneclaw-sidebar__brand-main {
+  width: 100%;
+  padding-left: 4px;
+}
+
+.oneclaw-sidebar__logo {
+  width: 32px !important;
+  height: 32px !important;
+  border: 2px solid #1f1f1f;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.oneclaw-sidebar__logo img {
+  width: 22px !important;
+  height: 22px !important;
+}
+
+.oneclaw-sidebar__title {
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  letter-spacing: 0.08em !important;
+  color: #111 !important;
+}
+
+.oneclaw-sidebar__brand::after {
+  content: "desktop gateway";
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #4b4b4b;
+  text-transform: none;
+}
