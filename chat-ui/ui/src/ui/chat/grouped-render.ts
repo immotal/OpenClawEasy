@@ -223,12 +223,18 @@ function renderGroupedMessage(
 ) {
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role : "unknown";
+  const roleLower = role.toLowerCase();
   const isToolResult =
     isToolResultMessage(message) ||
-    role.toLowerCase() === "toolresult" ||
-    role.toLowerCase() === "tool_result" ||
+    roleLower === "toolresult" ||
+    roleLower === "tool_result" ||
     typeof m.toolCallId === "string" ||
     typeof m.tool_call_id === "string";
+  const isToolRole =
+    roleLower === "tool" ||
+    roleLower === "tool_call" ||
+    roleLower === "toolcall" ||
+    isToolResult;
 
   const toolCards = extractToolCards(message);
   const hasToolCards = toolCards.length > 0;
@@ -252,8 +258,21 @@ function renderGroupedMessage(
     .filter(Boolean)
     .join(" ");
 
-  if (!markdown && hasToolCards && isToolResult) {
-    return html`${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}`;
+  // Tool role messages must stay collapsed to a single line by default.
+  // Never render full markdown/text bubble for tool payloads.
+  if (isToolRole) {
+    if (hasToolCards) {
+      return html`${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}`;
+    }
+    const fallbackCard = {
+      kind: "result" as const,
+      name:
+        (typeof m.toolName === "string" && m.toolName) ||
+        (typeof m.tool_name === "string" && m.tool_name) ||
+        "tool",
+      text: markdown ?? undefined,
+    };
+    return html`${renderToolCardSidebar(fallbackCard, onOpenSidebar)}`;
   }
 
   if (!markdown && !hasToolCards && !hasImages) {

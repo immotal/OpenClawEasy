@@ -1085,39 +1085,14 @@ export class OpenClawApp extends LitElement {
 
   // 达到阈值后尝试弹窗；同一版本只展示一次。
   private async maybeShowSharePrompt() {
-    if (this.sharePromptCheckInFlight || this.sharePromptVisible) {
-      return;
-    }
-    if (this.sharePromptSendCount < SHARE_PROMPT_TRIGGER_COUNT) {
-      return;
-    }
-    this.sharePromptCheckInFlight = true;
-    try {
-      const payload = await this.fetchShareCopyPayload();
-      if (!payload || this.sharePromptShownVersions.has(payload.version)) {
-        return;
-      }
-      this.sharePromptTitle = this.resolveSharePromptTitle(payload);
-      this.sharePromptSubtitle = this.resolveSharePromptSubtitle(payload);
-      this.sharePromptText = this.resolveSharePromptText(payload);
-      this.sharePromptVersion = payload.version;
-      this.sharePromptCopied = false;
-      this.sharePromptCopyError = null;
-      this.sharePromptVisible = true;
-
-      // 首次展示即标记已展示，避免同版本重复打扰。
-      this.sharePromptShownVersions.add(payload.version);
-      this.persistSharePromptStore();
-    } finally {
-      this.sharePromptCheckInFlight = false;
-    }
+    // Product decision: disable the share prompt completely.
+    this.sharePromptVisible = false;
   }
 
   // 记录一次有效用户输入，并检查是否需要触发分享弹窗。
   private recordSharePromptInput() {
-    this.sharePromptSendCount += 1;
-    this.persistSharePromptStore();
-    void this.maybeShowSharePrompt();
+    // Product decision: disable the share prompt completely.
+    return;
   }
 
   async handleSendChat(

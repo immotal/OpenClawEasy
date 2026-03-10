@@ -61,6 +61,24 @@ export function renderSidebar(props: SidebarProps) {
   return html`
     <aside class="oneclaw-sidebar">
       <div class="oneclaw-sidebar__brand">
+        <a
+          class="oneclaw-sidebar__brand-link"
+          href="https://openclaw.ai/"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="OpenClaw Website"
+          @click=${(event: Event) => {
+            event.preventDefault();
+            const bridge = (window as unknown as {
+              oneclaw?: { openExternal?: (url: string) => unknown };
+            }).oneclaw;
+            if (bridge?.openExternal) {
+              void bridge.openExternal("https://openclaw.ai/");
+              return;
+            }
+            window.open("https://openclaw.ai/", "_blank", "noopener,noreferrer");
+          }}
+        ></a>
         <div class="oneclaw-sidebar__brand-main">
           <div class="oneclaw-sidebar__logo">
             <img src=${oneClawLogo} alt=${t("sidebar.brand")} />

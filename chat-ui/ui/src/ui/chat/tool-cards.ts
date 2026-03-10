@@ -52,57 +52,38 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
   const display = resolveToolDisplay({ name: card.name, args: card.args });
   const detail = formatToolDetail(display);
   const hasText = Boolean(card.text?.trim());
-
-  const canClick = Boolean(onOpenSidebar);
-  const handleClick = canClick
-    ? () => {
-        if (hasText) {
-          onOpenSidebar!(formatToolOutputForSidebar(card.text!));
-          return;
-        }
-        const info = `## ${display.label}\n\n${
-          detail ? `**Command:** \`${detail}\`\n\n` : ""
-        }*No output — tool completed successfully.*`;
-        onOpenSidebar!(info);
-      }
-    : undefined;
-
+  const canOpenSidebar = Boolean(onOpenSidebar && hasText);
   const isShort = hasText && (card.text?.length ?? 0) <= TOOL_INLINE_THRESHOLD;
-  const showCollapsed = hasText && !isShort;
+  const showPreview = hasText && !isShort;
   const showInline = hasText && isShort;
   const isEmpty = !hasText;
 
   return html`
-    <div
-      class="chat-tool-card ${canClick ? "chat-tool-card--clickable" : ""}"
-      @click=${handleClick}
-      role=${canClick ? "button" : nothing}
-      tabindex=${canClick ? "0" : nothing}
-      @keydown=${
-        canClick
-          ? (e: KeyboardEvent) => {
-              if (e.key !== "Enter" && e.key !== " ") {
-                return;
-              }
-              e.preventDefault();
-              handleClick?.();
-            }
-          : nothing
-      }
-    >
-      <div class="chat-tool-card__header">
+    <details class="chat-tool-card chat-tool-card__details">
+      <summary class="chat-tool-card__summary">
         <div class="chat-tool-card__title">
           <span class="chat-tool-card__icon">${icons[display.icon]}</span>
-          <span>${display.label}</span>
+          <span>${`Tool: ${display.label}`}</span>
         </div>
         ${
-          canClick
-            ? html`<span class="chat-tool-card__action">${hasText ? "View" : ""} ${icons.check}</span>`
-            : nothing
+          canOpenSidebar
+            ? html`
+                <button
+                  class="chat-tool-card__summary-meta chat-tool-card__summary-meta-btn"
+                  type="button"
+                  title=${detail ?? "Details"}
+                  @click=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOpenSidebar?.(formatToolOutputForSidebar(card.text!));
+                  }}
+                >
+                  ${detail ?? "Details"}
+                </button>
+              `
+            : html`<span class="chat-tool-card__summary-meta">${detail ?? (isEmpty ? "Done" : "Detail")}</span>`
         }
-        ${isEmpty && !canClick ? html`<span class="chat-tool-card__status">${icons.check}</span>` : nothing}
-      </div>
-      ${detail ? html`<div class="chat-tool-card__detail">${detail}</div>` : nothing}
+      </summary>
       ${
         isEmpty
           ? html`
@@ -111,12 +92,12 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
           : nothing
       }
       ${
-        showCollapsed
+        showPreview
           ? html`<div class="chat-tool-card__preview mono">${getTruncatedPreview(card.text!)}</div>`
           : nothing
       }
       ${showInline ? html`<div class="chat-tool-card__inline mono">${card.text}</div>` : nothing}
-    </div>
+    </details>
   `;
 }
 
