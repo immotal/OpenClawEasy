@@ -300,6 +300,16 @@ function renderGroupedMessage(
     return renderToolRoundFromCards(toolCards, onOpenSidebar, "Tool activity");
   }
 
+  // Keep all assistant content inside a single collapsible tool section
+  // when tool activity exists, so there is no extra outer chat bubble.
+  if (roleLower === "assistant" && hasToolCards) {
+    return renderToolRoundFromCards(toolCards, onOpenSidebar, "Tool activity", {
+      markdown,
+      reasoningMarkdown,
+      images,
+    });
+  }
+
   if (!markdown && !hasToolCards && !hasImages) {
     return nothing;
   }
@@ -334,6 +344,11 @@ function renderToolRoundFromCards(
   cards: Array<{ kind: "call" | "result"; name: string; text?: string }>,
   onOpenSidebar?: (content: string) => void,
   title = "Tool activity",
+  extraContent?: {
+    markdown?: string | null;
+    reasoningMarkdown?: string | null;
+    images?: ImageBlock[];
+  },
 ) {
   if (cards.length === 0) {
     return nothing;
@@ -345,6 +360,9 @@ function renderToolRoundFromCards(
   const extraNames = Math.max(0, uniqueNames.length - 3);
   const stateLabel =
     callCount > resultCount ? "running" : resultCount > 0 ? "completed" : "pending";
+  const hasExtraContent = Boolean(
+    extraContent?.markdown || extraContent?.reasoningMarkdown || extraContent?.images?.length,
+  );
 
   return html`
     <details class="chat-tool-round">
@@ -365,6 +383,29 @@ function renderToolRoundFromCards(
         <span class="chat-tool-round__state">${stateLabel}</span>
       </summary>
       <div class="chat-tool-round__list">
+        ${
+          hasExtraContent
+            ? html`
+                <div class="chat-tool-round__extra">
+                  ${extraContent?.images?.length ? renderMessageImages(extraContent.images) : nothing}
+                  ${
+                    extraContent?.reasoningMarkdown
+                      ? html`<div class="chat-thinking">${unsafeHTML(
+                          toSanitizedMarkdownHtml(extraContent.reasoningMarkdown),
+                        )}</div>`
+                      : nothing
+                  }
+                  ${
+                    extraContent?.markdown
+                      ? html`<div class="chat-text" dir="${detectTextDirection(extraContent.markdown)}">
+                          ${unsafeHTML(toSanitizedMarkdownHtml(extraContent.markdown))}
+                        </div>`
+                      : nothing
+                  }
+                </div>
+              `
+            : nothing
+        }
         ${cards.map((card) => {
           const text = getToolCardText(card);
           const canOpenSidebar = Boolean(onOpenSidebar && text);

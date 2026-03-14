@@ -1328,8 +1328,8 @@ textarea[class*="code"],
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
-  min-height: 42px;
+  padding: 0 12px;
+  height: 44px;
   background: linear-gradient(180deg, rgba(192, 57, 43, 0.08), rgba(192, 57, 43, 0.03));
 }
 
@@ -1342,7 +1342,8 @@ textarea[class*="code"],
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .chat-tool-round__title {
@@ -1355,6 +1356,7 @@ textarea[class*="code"],
 .chat-tool-round__names {
   font-size: 12px;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .chat-tool-round__names {
@@ -1383,6 +1385,24 @@ textarea[class*="code"],
   padding: 10px 12px 12px;
   border-top: 1px solid var(--border);
   background: var(--bg-elevated);
+}
+
+.chat-tool-round__extra {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 8px 10px;
+}
+
+.chat-tool-round__extra .chat-message-images,
+.chat-tool-round__extra .chat-thinking,
+.chat-tool-round__extra .chat-text {
+  margin-top: 0;
+}
+
+.chat-tool-round__extra .chat-text + .chat-thinking,
+.chat-tool-round__extra .chat-thinking + .chat-text {
+  margin-top: 6px;
 }
 
 .chat-tool-round__item {
