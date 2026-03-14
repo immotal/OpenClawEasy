@@ -8,6 +8,7 @@ import {
   renderMessageGroup,
   renderReadingIndicatorGroup,
   renderStreamingGroup,
+  renderToolActivityStack,
 } from "../chat/grouped-render.ts";
 import { normalizeMessage, normalizeRoleForGrouping } from "../chat/message-normalizer.ts";
 import { icons } from "../icons.ts";
@@ -70,6 +71,13 @@ export type ChatProps = {
   onCloseSidebar?: () => void;
   onSplitRatioChange?: (ratio: number) => void;
   onChatScroll?: (event: Event) => void;
+};
+
+type ToolActivityStackItem = {
+  kind: "tool-stack";
+  key: string;
+  groups: MessageGroup[];
+  timestamp: number;
 };
 
 const COMPACTION_TOAST_DURATION_MS = 5000;
@@ -251,6 +259,15 @@ export function renderChat(props: ChatProps) {
 
           if (item.kind === "group") {
             return renderMessageGroup(item, {
+              onOpenSidebar: props.onOpenSidebar,
+              showReasoning,
+              assistantName: props.assistantName,
+              assistantAvatar: assistantIdentity.avatar,
+            });
+          }
+
+          if (item.kind === "tool-stack") {
+            return renderToolActivityStack(item, {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
               assistantName: props.assistantName,
@@ -524,7 +541,7 @@ function isAssistantToolOnlyMessage(
   return hasToolLike;
 }
 
-function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
+function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup | ToolActivityStackItem> {
   const items: ChatItem[] = [];
   const history = Array.isArray(props.messages) ? props.messages : [];
   const tools = Array.isArray(props.toolMessages) ? props.toolMessages : [];
@@ -592,7 +609,85 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
     }
   }
 
-  return groupMessages(items);
+  return collapseConsecutiveToolActivityGroups(groupMessages(items));
+}
+
+function collapseConsecutiveToolActivityGroups(
+  items: Array<ChatItem | MessageGroup>,
+): Array<ChatItem | MessageGroup | ToolActivityStackItem> {
+  const out: Array<ChatItem | MessageGroup | ToolActivityStackItem> = [];
+  let run: MessageGroup[] = [];
+  let runStartTs = Date.now();
+
+  const flushRun = () => {
+    if (run.length >= 2) {
+      out.push({
+        kind: "tool-stack",
+        key: `tool-stack:${run[0].key ?? String(runStartTs)}`,
+        groups: run,
+        timestamp: runStartTs,
+      });
+    } else if (run.length === 1) {
+      out.push(run[0]);
+    }
+    run = [];
+  };
+
+  for (const item of items) {
+    if (item.kind === "group" && isToolActivityGroup(item)) {
+      if (run.length === 0) {
+        runStartTs = typeof item.timestamp === "number" ? item.timestamp : Date.now();
+      }
+      run.push(item);
+      continue;
+    }
+    flushRun();
+    out.push(item);
+  }
+  flushRun();
+  return out;
+}
+
+function isToolActivityGroup(group: MessageGroup): boolean {
+  const role = normalizeRoleForGrouping(group.role);
+  if (role === "tool") {
+    return true;
+  }
+  const entries = Array.isArray(group.messages) ? group.messages : [];
+  return entries.some((entry) => {
+    const wrapped = entry as { message?: unknown };
+    return messageHasToolActivity(wrapped?.message ?? entry);
+  });
+}
+
+function messageHasToolActivity(message: unknown): boolean {
+  const normalized = normalizeMessage(message);
+  const role = normalizeRoleForGrouping(normalized.role);
+  if (role === "tool") {
+    return true;
+  }
+  const raw = message as Record<string, unknown>;
+  if (
+    typeof raw.toolCallId === "string" ||
+    typeof raw.tool_call_id === "string" ||
+    typeof raw.toolName === "string" ||
+    typeof raw.tool_name === "string"
+  ) {
+    return true;
+  }
+  const content = Array.isArray(normalized.content) ? normalized.content : [];
+  return content.some((item) => {
+    const type = (typeof item.type === "string" ? item.type : "").toLowerCase();
+    return (
+      type === "toolcall" ||
+      type === "tool_call" ||
+      type === "tooluse" ||
+      type === "tool_use" ||
+      type === "toolresult" ||
+      type === "tool_result" ||
+      (typeof item.name === "string" && item.name.trim().length > 0 && typeof item.args !== "undefined")
+    );
+  });
 }
 
 function messageKey(message: unknown, index: number): string {

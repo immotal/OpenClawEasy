@@ -167,6 +167,56 @@ export function renderMessageGroup(
   `;
 }
 
+export function renderToolActivityStack(
+  stack: { key: string; groups: MessageGroup[]; timestamp: number },
+  opts: {
+    onOpenSidebar?: (content: string) => void;
+    showReasoning: boolean;
+    assistantName?: string;
+    assistantAvatar?: string | null;
+  },
+) {
+  const count = stack.groups.length;
+  const timestamp = new Date(stack.timestamp).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const assistantName = opts.assistantName ?? "Assistant";
+  return html`
+    <div class="chat-group tool">
+      ${renderAvatar("tool", {
+        name: assistantName,
+        avatar: null,
+      })}
+      <div class="chat-group-messages">
+        <details class="chat-tool-stack">
+          <summary class="chat-tool-stack__summary">
+            <span class="chat-tool-stack__title-wrap">
+              <span class="chat-tool-stack__title">Tool activity</span>
+              <span class="chat-tool-stack__meta">${count} items</span>
+            </span>
+            <span class="chat-tool-stack__chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="chat-tool-stack__list">
+            ${stack.groups.map((group) =>
+              renderMessageGroup(group, {
+                onOpenSidebar: opts.onOpenSidebar,
+                showReasoning: opts.showReasoning,
+                assistantName: opts.assistantName,
+                assistantAvatar: opts.assistantAvatar,
+              }),
+            )}
+          </div>
+        </details>
+        <div class="chat-group-footer">
+          <span class="chat-sender-name">Tools</span>
+          <span class="chat-group-timestamp">${timestamp}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderAvatar(role: string, assistant?: Pick<AssistantIdentity, "name" | "avatar">) {
   const normalized = normalizeRoleForGrouping(role);
   const assistantName = assistant?.name?.trim() || "Assistant";

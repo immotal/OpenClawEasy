@@ -1458,6 +1458,75 @@ textarea[class*="code"],
   word-break: break-word;
 }
 
+/* Collapsed wrapper for consecutive tool activity groups */
+.chat-tool-stack {
+  width: min(760px, 100%);
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.chat-tool-stack__summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  height: 44px;
+  background: linear-gradient(180deg, rgba(192, 57, 43, 0.08), rgba(192, 57, 43, 0.03));
+  user-select: none;
+  position: relative;
+  z-index: 1;
+}
+
+.chat-tool-stack__summary::-webkit-details-marker {
+  display: none;
+}
+
+.chat-tool-stack__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.chat-tool-stack__title-wrap {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-tool-stack__meta {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.chat-tool-stack__chevron {
+  font-size: 18px;
+  color: var(--muted);
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+.chat-tool-stack[open] > .chat-tool-stack__summary .chat-tool-stack__chevron {
+  transform: rotate(90deg);
+}
+
+.chat-tool-stack__list {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
 /* Skills entry button in banner center area */
 .oneclaw-sidebar__item--skills {
   width: auto;
