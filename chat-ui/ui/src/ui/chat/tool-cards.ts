@@ -57,6 +57,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
   const showPreview = hasText && !isShort;
   const showInline = hasText && isShort;
   const isEmpty = !hasText;
+  const inlineDetail = compactOneLine(detail ?? "", 52);
 
   return html`
     <details class="chat-tool-card chat-tool-card__details">
@@ -64,6 +65,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
         <div class="chat-tool-card__title">
           <span class="chat-tool-card__icon">${icons[display.icon]}</span>
           <span>${`Tool: ${display.label}`}</span>
+          ${inlineDetail ? html`<span class="chat-tool-card__summary-inline">${inlineDetail}</span>` : nothing}
         </div>
         ${
           canOpenSidebar
@@ -71,17 +73,17 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
                 <button
                   class="chat-tool-card__summary-meta chat-tool-card__summary-meta-btn"
                   type="button"
-                  title=${detail ?? "Details"}
+                  title="Open in side panel"
                   @click=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();
                     onOpenSidebar?.(formatToolOutputForSidebar(card.text!));
                   }}
                 >
-                  ${detail ?? "Details"}
+                  Raw
                 </button>
               `
-            : html`<span class="chat-tool-card__summary-meta">${detail ?? (isEmpty ? "Done" : "Detail")}</span>`
+            : html`<span class="chat-tool-card__summary-meta">${isEmpty ? "Done" : "Detail"}</span>`
         }
       </summary>
       ${
@@ -99,6 +101,13 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
       ${showInline ? html`<div class="chat-tool-card__inline mono">${card.text}</div>` : nothing}
     </details>
   `;
+}
+
+function compactOneLine(value: string, maxLen: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= maxLen) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLen - 1)).trim()}…`;
 }
 
 function normalizeContent(content: unknown): Array<Record<string, unknown>> {

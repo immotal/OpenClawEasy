@@ -24,6 +24,13 @@ declare global {
       openExternal?: (url: string) => unknown;
       getGatewayPort?: () => Promise<number>;
       downloadAndInstallUpdate?: () => Promise<boolean>;
+      listInstalledSkills?: () => Promise<unknown>;
+      searchGithubSkills?: (query: string) => Promise<unknown>;
+      installGithubSkill?: (params: {
+        repoFullName: string;
+        skillPath: string;
+        name?: string;
+      }) => Promise<unknown>;
     };
   }
 }
@@ -163,7 +170,7 @@ function handleSessionChange(state: AppViewState, nextSessionKey: string) {
   applySessionKey(state, nextSessionKey, true);
 }
 
-function setOneClawView(state: AppViewState, next: "chat" | "settings") {
+function setOneClawView(state: AppViewState, next: "chat" | "settings" | "skills") {
   const prev = state.settings.oneclawView ?? "chat";
   if (prev === next) {
     return;
@@ -173,8 +180,8 @@ function setOneClawView(state: AppViewState, next: "chat" | "settings") {
     oneclawView: next,
   });
 
-  // 从设置页回到聊天页后，定位到最新消息，避免停留在会话开头。
-  if (prev === "settings" && next === "chat") {
+  // 从非聊天页回到聊天页后，定位到最新消息，避免停留在会话开头。
+  if (prev !== "chat" && next === "chat") {
     void state.updateComplete.then(() => {
       state.scrollToBottom();
     });
@@ -343,6 +350,259 @@ function renderOneClawSettingsPage(state: AppViewState) {
   `;
 }
 
+function openSkillFolder(pathValue: string) {
+  const cleanPath = pathValue.trim();
+  if (!cleanPath) {
+    return;
+  }
+  const targetUrl = /^https?:\/\//i.test(cleanPath) ? cleanPath : `file://${encodeURI(cleanPath)}`;
+  if (window.oneclaw?.openExternal) {
+    void window.oneclaw.openExternal(targetUrl);
+    return;
+  }
+  window.open(targetUrl, "_blank");
+}
+
+function resolveInstalledSkillSourceLabel(source: string): string {
+  if (source === "bundled") {
+    return t("sidebar.skillsSourceBundled");
+  }
+  if (source === "workspace") {
+    return t("sidebar.skillsSourceWorkspace");
+  }
+  if (source === "global") {
+    return t("sidebar.skillsSourceGlobal");
+  }
+  return t("sidebar.skillsSourceUser");
+}
+
+function renderOneClawSkillsPage(state: AppViewState) {
+  const activeTab = state.skillsTab;
+  const filter = state.installedSkillsFilter.trim().toLowerCase();
+  const baseSkills = activeTab === "built-in"
+    ? state.installedSkills.filter((skill) => skill.source === "bundled")
+    : state.installedSkills.filter((skill) => skill.source !== "bundled");
+  const filteredSkills = filter
+    ? baseSkills.filter((skill) => `${skill.name} ${skill.source} ${skill.path}`.toLowerCase().includes(filter))
+    : baseSkills;
+  const selectedSkill = activeTab === "search"
+    ? null
+    : (
+      filteredSkills.find((skill) => `${skill.source}:${skill.name}:${skill.path}` === state.installedSkillsSelectedKey)
+      ?? (filteredSkills[0] ?? null)
+    );
+  const selectedLabel = selectedSkill ? resolveInstalledSkillSourceLabel(selectedSkill.source) : "";
+  const githubQuery = state.githubSkillSearchQuery.trim();
+
+  return html`
+    <section class="oneclaw-skills-page">
+      <header class="oneclaw-skills-page__header">
+        <div>
+          <h2 class="oneclaw-skills-page__title">${t("skills.pageTitle")}</h2>
+          <p class="oneclaw-skills-page__subtitle">${t("skills.pageSubtitle")}</p>
+        </div>
+        <button
+          class="btn oneclaw-skills-page__refresh"
+          type="button"
+          ?disabled=${state.installedSkillsLoading}
+          @click=${() => void state.refreshInstalledSkills()}
+        >
+          ${state.installedSkillsLoading ? t("skills.loading") : t("skills.refresh")}
+        </button>
+      </header>
+
+      <div class="oneclaw-skills-page__tabs" role="tablist" aria-label="Skills tabs">
+        <button
+          class="oneclaw-skills-page__tab ${activeTab === "built-in" ? "is-active" : ""}"
+          type="button"
+          role="tab"
+          @click=${() => state.setSkillsTab("built-in")}
+        >
+          ${t("skills.tabBuiltIn")}
+        </button>
+        <button
+          class="oneclaw-skills-page__tab ${activeTab === "installed" ? "is-active" : ""}"
+          type="button"
+          role="tab"
+          @click=${() => state.setSkillsTab("installed")}
+        >
+          ${t("skills.tabInstalled")}
+        </button>
+        <button
+          class="oneclaw-skills-page__tab ${activeTab === "search" ? "is-active" : ""}"
+          type="button"
+          role="tab"
+          @click=${() => state.setSkillsTab("search")}
+        >
+          ${t("skills.tabSearchInstall")}
+        </button>
+      </div>
+
+      ${
+        activeTab === "search"
+          ? html`
+              <div class="oneclaw-skills-page__search">
+                <div class="oneclaw-skills-page__search-row">
+                  <input
+                    class="oneclaw-skills-page__search-input"
+                    type="search"
+                    .value=${state.githubSkillSearchQuery}
+                    placeholder=${t("skills.searchGithubPlaceholder")}
+                    @input=${(event: Event) =>
+                      state.setGithubSkillSearchQuery((event.target as HTMLInputElement).value)}
+                    @keydown=${(event: KeyboardEvent) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void state.searchGithubSkills();
+                      }
+                    }}
+                  />
+                  <button
+                    class="btn oneclaw-skills-page__refresh"
+                    type="button"
+                    ?disabled=${state.githubSkillSearchLoading || githubQuery.length < 2}
+                    @click=${() => void state.searchGithubSkills()}
+                  >
+                    ${state.githubSkillSearchLoading ? t("skills.searchingGithub") : t("skills.searchGithub")}
+                  </button>
+                </div>
+                <div class="muted">${t("skills.searchGithubHint")}</div>
+              </div>
+
+              <div class="oneclaw-skills-page__content">
+                ${state.githubSkillSearchError
+                  ? html`
+                      <div class="oneclaw-skills-page__empty is-error">
+                        ${state.githubSkillSearchError}
+                      </div>
+                    `
+                  : nothing}
+                ${state.githubSkillInstallMessage
+                  ? html`
+                      <div class="oneclaw-skills-page__empty">
+                        ${state.githubSkillInstallMessage}
+                      </div>
+                    `
+                  : nothing}
+                ${state.githubSkillSearchResults.length === 0 && !state.githubSkillSearchError
+                  ? html`<div class="oneclaw-skills-page__empty">${t("skills.searchGithubEmpty")}</div>`
+                  : html`
+                      <div class="oneclaw-skills-page__table" role="list">
+                        ${state.githubSkillSearchResults.map((item) => {
+                          const busy = state.githubSkillInstallBusyId === item.id;
+                          return html`
+                            <div class="oneclaw-skills-page__cell" role="listitem">
+                              <span class="oneclaw-skills-page__cell-name">${item.name}</span>
+                              <span class="oneclaw-skills-page__cell-source">${item.repoFullName}</span>
+                              ${
+                                item.description
+                                  ? html`<span class="oneclaw-skills-page__cell-desc">${item.description}</span>`
+                                  : nothing
+                              }
+                              <div class="oneclaw-skills-page__cell-actions">
+                                <button
+                                  class="btn oneclaw-skills-page__item-open"
+                                  type="button"
+                                  @click=${() => openSkillFolder(item.repoUrl)}
+                                >
+                                  ${t("skills.openRepo")}
+                                </button>
+                                <button
+                                  class="btn primary oneclaw-skills-page__item-open"
+                                  type="button"
+                                  ?disabled=${Boolean(state.githubSkillInstallBusyId)}
+                                  @click=${() => void state.installGithubSkill(item.id)}
+                                >
+                                  ${busy ? t("skills.installingGithub") : t("skills.installToWorkspace")}
+                                </button>
+                              </div>
+                            </div>
+                          `;
+                        })}
+                      </div>
+                    `}
+              </div>
+            `
+          : html`
+              <div class="oneclaw-skills-page__search">
+                <input
+                  class="oneclaw-skills-page__search-input"
+                  type="search"
+                  .value=${state.installedSkillsFilter}
+                  placeholder=${t("skills.searchPlaceholder")}
+                  @input=${(event: Event) =>
+                    state.setInstalledSkillsFilter((event.target as HTMLInputElement).value)}
+                />
+              </div>
+
+              <div class="oneclaw-skills-page__content">
+                ${state.installedSkillsLoading
+                  ? html`<div class="oneclaw-skills-page__empty">${t("skills.loading")}</div>`
+                  : state.installedSkillsError
+                    ? html`
+                        <div class="oneclaw-skills-page__empty is-error">
+                          ${t("skills.loadError")}: ${state.installedSkillsError}
+                        </div>
+                      `
+                    : filteredSkills.length === 0
+                      ? html`<div class="oneclaw-skills-page__empty">${t("skills.empty")}</div>`
+                      : html`
+                          <div class="oneclaw-skills-page__table" role="list">
+                            ${filteredSkills.map((skill) => {
+                              const itemKey = `${skill.source}:${skill.name}:${skill.path}`;
+                              const active = selectedSkill !== null && itemKey === `${selectedSkill.source}:${selectedSkill.name}:${selectedSkill.path}`;
+                              return html`
+                                <button
+                                  class="oneclaw-skills-page__cell ${active ? "is-active" : ""}"
+                                  role="listitem"
+                                  type="button"
+                                  @click=${() => state.setInstalledSkillsSelectedKey(itemKey)}
+                                  title=${skill.path}
+                                >
+                                  <span class="oneclaw-skills-page__cell-name">${skill.name}</span>
+                                  <span class="oneclaw-skills-page__cell-source">
+                                    ${resolveInstalledSkillSourceLabel(skill.source)}
+                                  </span>
+                                </button>
+                              `;
+                            })}
+                          </div>
+                          <section class="oneclaw-skills-page__details">
+                            <h3 class="oneclaw-skills-page__details-title">${t("skills.detailsTitle")}</h3>
+                            ${selectedSkill
+                              ? html`
+                                  <div class="oneclaw-skills-page__detail-row">
+                                    <span class="oneclaw-skills-page__detail-key">Name</span>
+                                    <span class="oneclaw-skills-page__detail-value">${selectedSkill.name}</span>
+                                  </div>
+                                  <div class="oneclaw-skills-page__detail-row">
+                                    <span class="oneclaw-skills-page__detail-key">Source</span>
+                                    <span class="oneclaw-skills-page__detail-value">${selectedLabel}</span>
+                                  </div>
+                                  <div class="oneclaw-skills-page__detail-row">
+                                    <span class="oneclaw-skills-page__detail-key">Path</span>
+                                    <code class="oneclaw-skills-page__detail-path">${selectedSkill.path}</code>
+                                  </div>
+                                  <div class="oneclaw-skills-page__detail-actions">
+                                    <button
+                                      class="btn oneclaw-skills-page__item-open"
+                                      type="button"
+                                      @click=${() => openSkillFolder(selectedSkill.path)}
+                                    >
+                                      ${t("skills.openFolder")}
+                                    </button>
+                                  </div>
+                                `
+                              : html`<div class="oneclaw-skills-page__empty">${t("skills.clickHint")}</div>`}
+                          </section>
+                        `}
+              </div>
+            `
+      }
+    </section>
+  `;
+}
+
 // 在聊天页顶部展示飞书待审批卡片，把“去设置里找批准”改成主流程内的一步动作。
 function renderFeishuPairingNotice(state: AppViewState) {
   if (!state.shouldShowFeishuPairingNotice()) {
@@ -395,6 +655,7 @@ export function renderApp(state: AppViewState) {
   const sessionOptions = resolveSessionOptions(state);
   const oneclawView = state.settings.oneclawView ?? "chat";
   const settingsActive = oneclawView === "settings";
+  const skillsActive = oneclawView === "skills";
   const chatActive = oneclawView === "chat";
   const updateBannerState = state.updateBannerState;
 
@@ -410,6 +671,7 @@ export function renderApp(state: AppViewState) {
             sessionOptions,
             chatActive,
             settingsActive,
+            skillsActive,
             updateStatus: updateBannerState.status,
             updateVersion: updateBannerState.version,
             updatePercent: updateBannerState.percent,
@@ -429,12 +691,17 @@ export function renderApp(state: AppViewState) {
               state,
               state.feishuPairingState.pendingCount > 0 ? "channels" : null,
             ),
+            onOpenSkills: () => {
+              setOneClawView(state, "skills");
+              state.setSkillsTab("built-in");
+              void state.refreshInstalledSkills();
+            },
             onOpenWebUI: () => void handleOpenWebUI(state),
             onOpenDocs: () => {
               if (window.oneclaw?.openExternal) {
-                window.oneclaw.openExternal("https://oneclaw.cn/docs");
+                window.oneclaw.openExternal("https://openclaw.ai/");
               } else {
-                window.open("https://oneclaw.cn/docs", "_blank");
+                window.open("https://openclaw.ai/", "_blank");
               }
             },
             onApplyUpdate: () => void handleApplyUpdate(state),
@@ -466,6 +733,8 @@ export function renderApp(state: AppViewState) {
           ${renderFeishuPairingNotice(state)}
           ${settingsActive
             ? renderOneClawSettingsPage(state)
+            : skillsActive
+              ? renderOneClawSkillsPage(state)
             : html`
                 ${renderChat({
                   sessionKey: state.sessionKey,

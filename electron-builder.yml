@@ -30,6 +30,10 @@ mac:
   hardenedRuntime: true
   gatekeeperAssess: false
   notarize: true
+  # osx-sign + isbinaryfile 在扫描该上游扩展源码文件时会崩溃（RangeError: Invalid array length）
+  # 该文件位于 Resources 下，不影响可执行签名，跳过即可避免构建失败
+  signIgnore:
+    - "^/Contents/Resources/resources/gateway/node_modules/openclaw/extensions/zalouser/src/.*\\.ts$"
 
 # 自动更新：指向阿里云 CDN
 publish:

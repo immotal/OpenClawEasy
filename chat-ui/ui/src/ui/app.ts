@@ -140,6 +140,16 @@ type OneClawIpcResult = {
   message?: string;
 };
 
+type GithubSkillSearchResult = {
+  id: string;
+  name: string;
+  repoFullName: string;
+  repoUrl: string;
+  skillPath: string;
+  htmlUrl: string;
+  description: string;
+};
+
 type OneClawBridge = {
   onNavigate?: (cb: (payload: { view: "settings" }) => void) => (() => void) | void;
   onUpdateState?: (cb: (payload: OneClawUpdateState) => void) => (() => void) | void;
@@ -155,6 +165,33 @@ type OneClawBridge = {
   settingsRejectFeishuPairing?: (
     params: { code: string; id?: string; name?: string },
   ) => Promise<OneClawIpcResult>;
+  listInstalledSkills?: () => Promise<{
+    success?: boolean;
+    data?: Array<{ name?: string; source?: string; path?: string }>;
+    message?: string;
+  }>;
+  searchGithubSkills?: (query: string) => Promise<{
+    success?: boolean;
+    data?: Array<{
+      id?: string;
+      name?: string;
+      repoFullName?: string;
+      repoUrl?: string;
+      skillPath?: string;
+      htmlUrl?: string;
+      description?: string;
+    }>;
+    message?: string;
+  }>;
+  installGithubSkill?: (params: {
+    repoFullName: string;
+    skillPath: string;
+    name?: string;
+  }) => Promise<{
+    success?: boolean;
+    data?: { name?: string; path?: string };
+    message?: string;
+  }>;
 };
 
 const SHARE_PROMPT_STORE_KEY = "openclaw.share.prompt.v1";
@@ -333,6 +370,18 @@ export class OpenClawApp extends LitElement {
     skillEdits: { state: true },
     skillsBusyKey: { state: true },
     skillMessages: { state: true },
+    installedSkillsLoading: { state: true },
+    installedSkillsError: { state: true },
+    installedSkills: { state: true },
+    installedSkillsFilter: { state: true },
+    installedSkillsSelectedKey: { state: true },
+    skillsTab: { state: true },
+    githubSkillSearchQuery: { state: true },
+    githubSkillSearchLoading: { state: true },
+    githubSkillSearchError: { state: true },
+    githubSkillSearchResults: { state: true },
+    githubSkillInstallBusyId: { state: true },
+    githubSkillInstallMessage: { state: true },
     debugLoading: { state: true },
     debugStatus: { state: true },
     debugHealth: { state: true },
@@ -584,6 +633,18 @@ export class OpenClawApp extends LitElement {
   skillEdits: Record<string, string> = {};
   skillsBusyKey: string | null = null;
   skillMessages: Record<string, SkillMessage> = {};
+  installedSkillsLoading = false;
+  installedSkillsError: string | null = null;
+  installedSkills: Array<{ name: string; source: string; path: string }> = [];
+  installedSkillsFilter = "";
+  installedSkillsSelectedKey = "";
+  skillsTab: "built-in" | "installed" | "search" = "built-in";
+  githubSkillSearchQuery = "";
+  githubSkillSearchLoading = false;
+  githubSkillSearchError: string | null = null;
+  githubSkillSearchResults: GithubSkillSearchResult[] = [];
+  githubSkillInstallBusyId: string | null = null;
+  githubSkillInstallMessage: string | null = null;
 
   debugLoading = false;
   debugStatus: StatusSummary | null = null;
@@ -670,6 +731,7 @@ export class OpenClawApp extends LitElement {
     this.bindAppNavigation();
     this.bindUpdateState();
     this.bindFeishuPairingState();
+    void this.refreshInstalledSkills();
   }
 
   protected firstUpdated() {
@@ -741,6 +803,142 @@ export class OpenClawApp extends LitElement {
   // 统一读取 preload 暴露的 bridge，避免在多个方法里重复类型断言。
   private getOneClawBridge(): OneClawBridge | undefined {
     return (window as unknown as { oneclaw?: OneClawBridge }).oneclaw;
+  }
+
+  async refreshInstalledSkills() {
+    const bridge = this.getOneClawBridge();
+    if (!bridge?.listInstalledSkills || this.installedSkillsLoading) {
+      return;
+    }
+    this.installedSkillsLoading = true;
+    this.installedSkillsError = null;
+    try {
+      const result = await bridge.listInstalledSkills();
+      if (!result || result.success !== true || !Array.isArray(result.data)) {
+        this.installedSkills = [];
+        this.installedSkillsError = result?.message || "Failed to load skills";
+        return;
+      }
+      const normalized = result.data
+        .map((item) => ({
+          name: String(item?.name || "").trim(),
+          source: String(item?.source || "").trim() || "unknown",
+          path: String(item?.path || "").trim(),
+        }))
+        .filter((item) => item.name.length > 0);
+      this.installedSkills = normalized;
+      if (normalized.length === 0) {
+        this.installedSkillsSelectedKey = "";
+      } else if (
+        !this.installedSkillsSelectedKey ||
+        !normalized.some(
+          (item) => `${item.source}:${item.name}:${item.path}` === this.installedSkillsSelectedKey,
+        )
+      ) {
+        const first = normalized[0];
+        this.installedSkillsSelectedKey = `${first.source}:${first.name}:${first.path}`;
+      }
+    } catch (err: any) {
+      this.installedSkills = [];
+      this.installedSkillsSelectedKey = "";
+      this.installedSkillsError = err?.message || String(err);
+    } finally {
+      this.installedSkillsLoading = false;
+    }
+  }
+
+  setInstalledSkillsFilter(next: string) {
+    this.installedSkillsFilter = next;
+  }
+
+  setInstalledSkillsSelectedKey(next: string) {
+    this.installedSkillsSelectedKey = next;
+  }
+
+  setSkillsTab(next: "built-in" | "installed" | "search") {
+    this.skillsTab = next;
+    if (next === "search" && this.githubSkillSearchResults.length === 0) {
+      this.githubSkillInstallMessage = null;
+    }
+  }
+
+  setGithubSkillSearchQuery(next: string) {
+    this.githubSkillSearchQuery = next;
+  }
+
+  async searchGithubSkills() {
+    const bridge = this.getOneClawBridge();
+    const query = this.githubSkillSearchQuery.trim();
+    if (!bridge?.searchGithubSkills || this.githubSkillSearchLoading) {
+      return;
+    }
+    if (query.length < 2) {
+      this.githubSkillSearchResults = [];
+      this.githubSkillSearchError = t("skills.searchGithubNeedQuery");
+      return;
+    }
+    this.githubSkillSearchLoading = true;
+    this.githubSkillSearchError = null;
+    this.githubSkillInstallMessage = null;
+    try {
+      const result = await bridge.searchGithubSkills(query);
+      if (!result || result.success !== true || !Array.isArray(result.data)) {
+        this.githubSkillSearchResults = [];
+        this.githubSkillSearchError = result?.message || t("skills.searchGithubError");
+        return;
+      }
+      this.githubSkillSearchResults = result.data
+        .map((item) => ({
+          id: String(item?.id || "").trim(),
+          name: String(item?.name || "").trim(),
+          repoFullName: String(item?.repoFullName || "").trim(),
+          repoUrl: String(item?.repoUrl || "").trim(),
+          skillPath: String(item?.skillPath || ".").trim() || ".",
+          htmlUrl: String(item?.htmlUrl || "").trim(),
+          description: String(item?.description || "").trim(),
+        }))
+        .filter((item) => item.id && item.repoFullName && item.name);
+    } catch (err: any) {
+      this.githubSkillSearchResults = [];
+      this.githubSkillSearchError = err?.message || String(err);
+    } finally {
+      this.githubSkillSearchLoading = false;
+    }
+  }
+
+  async installGithubSkill(resultId: string) {
+    const bridge = this.getOneClawBridge();
+    if (!bridge?.installGithubSkill || this.githubSkillInstallBusyId) {
+      return;
+    }
+    const target = this.githubSkillSearchResults.find((item) => item.id === resultId);
+    if (!target) {
+      return;
+    }
+    this.githubSkillInstallBusyId = resultId;
+    this.githubSkillSearchError = null;
+    this.githubSkillInstallMessage = null;
+    try {
+      const result = await bridge.installGithubSkill({
+        repoFullName: target.repoFullName,
+        skillPath: target.skillPath,
+        name: target.name,
+      });
+      if (!result || result.success !== true) {
+        this.githubSkillInstallMessage = result?.message || t("skills.installGithubError");
+        return;
+      }
+      this.githubSkillInstallMessage = t("skills.installGithubSuccess").replace(
+        "{name}",
+        String(result.data?.name || target.name),
+      );
+      await this.refreshInstalledSkills();
+      this.skillsTab = "installed";
+    } catch (err: any) {
+      this.githubSkillInstallMessage = err?.message || t("skills.installGithubError");
+    } finally {
+      this.githubSkillInstallBusyId = null;
+    }
   }
 
   // 规范化更新状态 payload，保证渲染层只消费合法值。

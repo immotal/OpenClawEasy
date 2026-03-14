@@ -451,7 +451,7 @@ function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
     }
 
     const normalized = normalizeMessage(item.message);
-    const role = normalizeRoleForGrouping(normalized.role);
+    const role = resolveGroupingRole(normalized);
     const timestamp = normalized.timestamp || Date.now();
 
     if (!currentGroup || currentGroup.role !== role) {
@@ -475,6 +475,53 @@ function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
     result.push(currentGroup);
   }
   return result;
+}
+
+function resolveGroupingRole(
+  normalized: ReturnType<typeof normalizeMessage>,
+): string {
+  const baseRole = normalizeRoleForGrouping(normalized.role);
+  if (baseRole !== "assistant") {
+    return baseRole;
+  }
+  // Assistant tool-only payloads should merge into tool rounds,
+  // so "assistant tool call" + "tool result" appear in one strip.
+  if (isAssistantToolOnlyMessage(normalized)) {
+    return "tool";
+  }
+  return baseRole;
+}
+
+function isAssistantToolOnlyMessage(
+  normalized: ReturnType<typeof normalizeMessage>,
+): boolean {
+  const items = Array.isArray(normalized.content) ? normalized.content : [];
+  if (items.length === 0) {
+    return false;
+  }
+  let hasToolLike = false;
+  for (const item of items) {
+    const type = (typeof item.type === "string" ? item.type : "").toLowerCase();
+    const isToolLikeType =
+      type === "toolcall" ||
+      type === "tool_call" ||
+      type === "tooluse" ||
+      type === "tool_use" ||
+      type === "toolresult" ||
+      type === "tool_result";
+    const hasToolNameWithArgs =
+      typeof item.name === "string" &&
+      item.name.trim().length > 0 &&
+      typeof item.args !== "undefined";
+    if (isToolLikeType || hasToolNameWithArgs) {
+      hasToolLike = true;
+      continue;
+    }
+    if (type === "text" && typeof item.text === "string" && item.text.trim().length > 0) {
+      return false;
+    }
+  }
+  return hasToolLike;
 }
 
 function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {

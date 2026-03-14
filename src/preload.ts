@@ -139,4 +139,8 @@ contextBridge.exposeInMainWorld("oneclaw", {
     ipcRenderer.on("app:feishu-pairing-state", listener);
     return () => ipcRenderer.removeListener("app:feishu-pairing-state", listener);
   },
+  listInstalledSkills: () => ipcRenderer.invoke("app:list-installed-skills"),
+  searchGithubSkills: (query: string) => ipcRenderer.invoke("app:search-github-skills", query),
+  installGithubSkill: (params: { repoFullName: string; skillPath: string; name?: string }) =>
+    ipcRenderer.invoke("app:install-github-skill", params),
 });

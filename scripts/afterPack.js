@@ -76,6 +76,10 @@ exports.default = async function afterPack(context) {
     fs.copyFileSync(src, dest);
     console.log(`[afterPack] 已注入 ${name}`);
   }
+
+  // 规避 osx-sign 在扫描某些上游 TS 源文件时触发 isbinaryfile 崩溃。
+  // 这些 src/*.ts 在运行时不需要（扩展走已编译产物），可安全裁剪。
+  pruneSigningSensitiveSourceFiles(targetBase);
 };
 
 // ── 递归复制目录（保留文件权限） ──
@@ -98,5 +102,25 @@ function copyDirSync(src, dest) {
       fs.copyFileSync(s, d);
       fs.chmodSync(d, fs.statSync(s).mode);
     }
+  }
+}
+
+function pruneSigningSensitiveSourceFiles(targetBase) {
+  const candidates = [
+    path.join(
+      targetBase,
+      "gateway",
+      "node_modules",
+      "openclaw",
+      "extensions",
+      "zalouser",
+      "src"
+    ),
+  ];
+
+  for (const dir of candidates) {
+    if (!fs.existsSync(dir)) continue;
+    fs.rmSync(dir, { recursive: true, force: true });
+    console.log(`[afterPack] 已裁剪签名敏感源码目录: ${path.relative(targetBase, dir)}`);
   }
 }

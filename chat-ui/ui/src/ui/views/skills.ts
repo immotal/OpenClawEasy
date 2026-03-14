@@ -13,7 +13,7 @@ const SKILL_SOURCE_GROUPS: Array<{ id: string; label: string; sources: string[] 
   { id: "workspace", label: "Workspace Skills", sources: ["openclaw-workspace"] },
   { id: "built-in", label: "Built-in Skills", sources: ["openclaw-bundled"] },
   { id: "installed", label: "Installed Skills", sources: ["openclaw-managed"] },
-  { id: "extra", label: "Extra Skills", sources: ["openclaw-extra"] },
+  { id: "global", label: "Global Skills", sources: ["openclaw-extra"] },
 ];
 
 function groupSkills(skills: SkillStatusEntry[]): SkillGroup[] {
@@ -73,7 +73,7 @@ export function renderSkills(props: SkillsProps) {
       <div class="row" style="justify-content: space-between;">
         <div>
           <div class="card-title">Skills</div>
-          <div class="card-sub">Bundled, managed, and workspace skills.</div>
+          <div class="card-sub">Bundled, managed, workspace, and global skills.</div>
         </div>
         <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
           ${props.loading ? "Loading…" : "Refresh"}

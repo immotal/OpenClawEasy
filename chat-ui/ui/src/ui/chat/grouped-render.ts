@@ -12,6 +12,7 @@ import {
 } from "./message-extract.ts";
 import { isToolResultMessage, normalizeRoleForGrouping } from "./message-normalizer.ts";
 import { extractToolCards, renderToolCardSidebar } from "./tool-cards.ts";
+import type { ToolCard } from "../types/chat-types.ts";
 
 type ImageBlock = {
   url: string;
@@ -120,9 +121,17 @@ export function renderMessageGroup(
       ? "You"
       : normalizedRole === "assistant"
         ? assistantName
+        : normalizedRole === "tool"
+          ? "Tools"
         : normalizedRole;
   const roleClass =
-    normalizedRole === "user" ? "user" : normalizedRole === "assistant" ? "assistant" : "other";
+    normalizedRole === "user"
+      ? "user"
+      : normalizedRole === "assistant"
+        ? "assistant"
+        : normalizedRole === "tool"
+          ? "tool"
+          : "other";
   const timestamp = new Date(group.timestamp).toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
@@ -135,16 +144,20 @@ export function renderMessageGroup(
         avatar: opts.assistantAvatar ?? null,
       })}
       <div class="chat-group-messages">
-        ${group.messages.map((item, index) =>
-          renderGroupedMessage(
-            item.message,
-            {
-              isStreaming: group.isStreaming && index === group.messages.length - 1,
-              showReasoning: opts.showReasoning,
-            },
-            opts.onOpenSidebar,
-          ),
-        )}
+        ${
+          normalizedRole === "tool"
+            ? renderToolRoundGroup(group, opts.onOpenSidebar)
+            : group.messages.map((item, index) =>
+                renderGroupedMessage(
+                  item.message,
+                  {
+                    isStreaming: group.isStreaming && index === group.messages.length - 1,
+                    showReasoning: opts.showReasoning,
+                  },
+                  opts.onOpenSidebar,
+                ),
+              )
+        }
         <div class="chat-group-footer">
           <span class="chat-sender-name">${who}</span>
           <span class="chat-group-timestamp">${timestamp}</span>
@@ -248,6 +261,12 @@ function renderGroupedMessage(
   const reasoningMarkdown = extractedThinking ? formatReasoningMarkdown(extractedThinking) : null;
   const markdown = markdownBase;
   const canCopyMarkdown = role === "assistant" && Boolean(markdown?.trim());
+  const isAssistantToolOnly =
+    roleLower === "assistant" &&
+    hasToolCards &&
+    !markdown &&
+    !reasoningMarkdown &&
+    !hasImages;
 
   const bubbleClasses = [
     "chat-bubble",
@@ -275,6 +294,12 @@ function renderGroupedMessage(
     return html`${renderToolCardSidebar(fallbackCard, onOpenSidebar)}`;
   }
 
+  // Assistant messages that are effectively tool-only should render
+  // as standalone tool rounds (without an outer assistant bubble).
+  if (isAssistantToolOnly) {
+    return renderToolRoundFromCards(toolCards, onOpenSidebar, "Tool activity");
+  }
+
   if (!markdown && !hasToolCards && !hasImages) {
     return nothing;
   }
@@ -295,7 +320,123 @@ function renderGroupedMessage(
           ? html`<div class="chat-text" dir="${detectTextDirection(markdown)}">${unsafeHTML(toSanitizedMarkdownHtml(markdown))}</div>`
           : nothing
       }
-      ${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}
+      ${hasToolCards ? renderToolRoundFromCards(toolCards, onOpenSidebar, "Tool activity") : nothing}
     </div>
   `;
+}
+
+function renderToolRoundGroup(group: MessageGroup, onOpenSidebar?: (content: string) => void) {
+  const cards = collectToolCardsFromGroup(group);
+  return renderToolRoundFromCards(cards, onOpenSidebar, "Tool activity");
+}
+
+function renderToolRoundFromCards(
+  cards: Array<{ kind: "call" | "result"; name: string; text?: string }>,
+  onOpenSidebar?: (content: string) => void,
+  title = "Tool activity",
+) {
+  if (cards.length === 0) {
+    return nothing;
+  }
+  const callCount = cards.filter((card) => card.kind === "call").length;
+  const resultCount = cards.filter((card) => card.kind === "result").length;
+  const uniqueNames = Array.from(new Set(cards.map((card) => card.name).filter(Boolean)));
+  const namesLabel = uniqueNames.slice(0, 3).join(", ");
+  const extraNames = Math.max(0, uniqueNames.length - 3);
+  const stateLabel =
+    callCount > resultCount ? "running" : resultCount > 0 ? "completed" : "pending";
+
+  return html`
+    <details class="chat-tool-round">
+      <summary class="chat-tool-round__summary">
+        <div class="chat-tool-round__title-wrap">
+          <span class="chat-tool-round__title">${title}</span>
+          <span class="chat-tool-round__meta">${callCount} calls · ${resultCount} results</span>
+          ${
+            namesLabel
+              ? html`
+                  <span class="chat-tool-round__names" title=${uniqueNames.join(", ")}>
+                    ${namesLabel}${extraNames > 0 ? ` +${extraNames}` : ""}
+                  </span>
+                `
+              : nothing
+          }
+        </div>
+        <span class="chat-tool-round__state">${stateLabel}</span>
+      </summary>
+      <div class="chat-tool-round__list">
+        ${cards.map((card) => {
+          const text = getToolCardText(card);
+          const canOpenSidebar = Boolean(onOpenSidebar && text);
+          const preview = text ? compactPreview(text, 180) : "";
+          return html`
+            <div class="chat-tool-round__item">
+              <div class="chat-tool-round__item-head">
+                <span class="chat-tool-round__item-kind">${card.kind === "call" ? "Call" : "Result"}</span>
+                <span class="chat-tool-round__item-name">${card.name}</span>
+                ${
+                  canOpenSidebar
+                    ? html`
+                        <button
+                          class="chat-tool-round__raw"
+                          type="button"
+                          @click=${() => onOpenSidebar?.(text!)}
+                        >
+                          Raw
+                        </button>
+                      `
+                    : nothing
+                }
+              </div>
+              ${preview ? html`<div class="chat-tool-round__item-preview mono">${preview}</div>` : nothing}
+            </div>
+          `;
+        })}
+      </div>
+    </details>
+  `;
+}
+
+function collectToolCardsFromGroup(group: MessageGroup): Array<{ kind: "call" | "result"; name: string; text?: string }> {
+  const out: Array<{ kind: "call" | "result"; name: string; text?: string }> = [];
+  for (const entry of group.messages as Array<{ message?: unknown }>) {
+    const message = entry?.message;
+    if (!message) continue;
+    const cards = extractToolCards(message);
+    if (cards.length > 0) {
+      for (const card of cards) {
+        out.push({
+          kind: card.kind,
+          name: card.name || "tool",
+          text: getToolCardText(card),
+        });
+      }
+      continue;
+    }
+    const m = message as Record<string, unknown>;
+    const fallbackText = extractTextCached(message) ?? undefined;
+    out.push({
+      kind: "result",
+      name:
+        (typeof m.toolName === "string" && m.toolName) ||
+        (typeof m.tool_name === "string" && m.tool_name) ||
+        "tool",
+      text: fallbackText,
+    });
+  }
+  return out;
+}
+
+function getToolCardText(card: ToolCard): string | undefined {
+  const raw = card.text;
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function compactPreview(value: string, maxLen: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= maxLen) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLen - 1)).trim()}...`;
 }

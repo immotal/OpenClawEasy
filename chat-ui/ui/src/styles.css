@@ -737,6 +737,7 @@ body {
   background: #f1f1f1 !important;
   flex-direction: row !important;
   align-items: stretch;
+  overflow: visible !important;
 }
 
 .oneclaw-sidebar__brand {
@@ -1124,13 +1125,7 @@ textarea[class*="code"],
 
 .oneclaw-sidebar__nav::before,
 .oneclaw-sidebar__footer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 6px;
-  height: 100%;
-  background: var(--accent);
+  display: none !important;
 }
 
 .content-header {
@@ -1167,13 +1162,7 @@ textarea[class*="code"],
 }
 
 .oneclaw-sidebar__brand::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 6px;
-  height: 100%;
-  background: var(--accent);
+  display: none !important;
 }
 
 .oneclaw-sidebar__brand-main {
@@ -1284,6 +1273,9 @@ textarea[class*="code"],
 .chat-tool-card__summary .chat-tool-card__title {
   font-size: 12px !important;
   font-weight: 600 !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .chat-tool-card__icon {
@@ -1301,10 +1293,497 @@ textarea[class*="code"],
   color: #666 !important;
 }
 
+.chat-tool-card__summary-inline {
+  color: #666;
+  font-size: 11px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chat-tool-card__detail,
 .chat-tool-card__preview,
 .chat-tool-card__inline,
 .chat-tool-card__status-text {
   font-size: 11px !important;
   line-height: 1.35;
+}
+
+/* Tool round summary (merged per tool turn) */
+.chat-tool-round {
+  width: min(760px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.chat-tool-round__summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  min-height: 42px;
+  background: linear-gradient(180deg, rgba(192, 57, 43, 0.08), rgba(192, 57, 43, 0.03));
+}
+
+.chat-tool-round__summary::-webkit-details-marker {
+  display: none;
+}
+
+.chat-tool-round__title-wrap {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chat-tool-round__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.chat-tool-round__meta,
+.chat-tool-round__names {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chat-tool-round__names {
+  min-width: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 340px;
+}
+
+.chat-tool-round__state {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--accent);
+  border: 1px solid var(--accent-subtle);
+  background: rgba(192, 57, 43, 0.1);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.chat-tool-round__list {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.chat-tool-round__item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 8px 10px;
+}
+
+.chat-tool-round__item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-tool-round__item-kind {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.chat-tool-round__item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-tool-round__raw {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-tool-round__item-preview {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Skills entry button in banner center area */
+.oneclaw-sidebar__item--skills {
+  width: auto;
+  align-self: flex-start;
+  padding: 6px 10px !important;
+  min-width: 0;
+  border: 2px solid #1f1f1f !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: 2px 2px 0 rgba(31, 31, 31, 0.18) !important;
+  min-height: 34px;
+}
+
+.oneclaw-sidebar__item--skills.active {
+  background: #f7e8e4 !important;
+  border-color: #b24b37 !important;
+  color: #8f2f20 !important;
+}
+
+/* Banner middle: primary entry + more menu */
+.oneclaw-sidebar__nav {
+  overflow: visible !important;
+}
+
+.oneclaw-sidebar__item--quick-chat {
+  flex-shrink: 0;
+}
+
+.oneclaw-sidebar__item--skills {
+  flex-shrink: 0;
+}
+
+.oneclaw-sidebar__more {
+  position: relative;
+  margin: 0;
+  z-index: 30;
+  -webkit-app-region: no-drag;
+}
+
+.oneclaw-sidebar__item--more {
+  list-style: none;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.oneclaw-sidebar__item--more::-webkit-details-marker,
+.oneclaw-sidebar__item--more::marker {
+  display: none;
+}
+
+.oneclaw-sidebar__more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  border: 2px solid #1f1f1f;
+  background: #ffffff;
+  box-shadow: 4px 4px 0 rgba(31, 31, 31, 0.15);
+  padding: 6px;
+  display: none;
+  z-index: 40;
+  -webkit-app-region: no-drag;
+}
+
+.oneclaw-sidebar__more[open] .oneclaw-sidebar__more-menu {
+  display: grid;
+  gap: 4px;
+}
+
+.oneclaw-sidebar__more-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 2px solid #1f1f1f;
+  background: #fff;
+  color: #111;
+  min-height: 34px;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.oneclaw-sidebar__more-item:hover {
+  background: #f9f6ee;
+}
+
+.oneclaw-sidebar__more-item.is-active {
+  background: #f7e8e4;
+  border-color: #b24b37;
+  color: #8f2f20;
+}
+
+.oneclaw-sidebar__section--agent {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+  min-width: 220px;
+}
+
+.oneclaw-sidebar__section--agent .oneclaw-sidebar__section-title {
+  display: none !important;
+}
+
+.oneclaw-sidebar__section--agent .oneclaw-sidebar__select-wrap {
+  width: 100%;
+}
+
+@media (max-width: 1199px) {
+  .oneclaw-sidebar__item--quick-chat {
+    display: inline-flex !important;
+  }
+
+  .oneclaw-sidebar__item--quick-chat .oneclaw-sidebar__label,
+  .oneclaw-sidebar__item--more .oneclaw-sidebar__label {
+    display: none !important;
+  }
+
+  .oneclaw-sidebar__item--quick-chat,
+  .oneclaw-sidebar__item--more {
+    width: 40px;
+    padding: 0 !important;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 899px) {
+  .oneclaw-sidebar__section--agent {
+    display: none !important;
+  }
+
+  .oneclaw-sidebar__nav {
+    gap: 6px !important;
+  }
+}
+
+/* Dedicated skills manager page */
+.oneclaw-skills-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  padding: 12px;
+  overflow: hidden;
+  background: #f4efe4;
+}
+
+.oneclaw-skills-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 2px solid #1f1f1f;
+  background: #ffffff;
+  padding: 12px 14px;
+}
+
+.oneclaw-skills-page__title {
+  margin: 0;
+  font-size: 18px;
+  color: #111;
+}
+
+.oneclaw-skills-page__subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #555;
+}
+
+.oneclaw-skills-page__refresh {
+  border: 2px solid #1f1f1f !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: 2px 2px 0 rgba(31, 31, 31, 0.2) !important;
+}
+
+.oneclaw-skills-page__search {
+  border: 2px solid #1f1f1f;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.oneclaw-skills-page__tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.oneclaw-skills-page__tab {
+  border: 2px solid #1f1f1f;
+  background: #ffffff;
+  color: #111;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.oneclaw-skills-page__tab.is-active {
+  border-color: #b24b37;
+  background: #f7e8e4;
+  color: #8f2f20;
+}
+
+.oneclaw-skills-page__search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.oneclaw-skills-page__search-input {
+  width: 100%;
+  height: 40px;
+  border: 2px solid #1f1f1f;
+  border-radius: 0;
+  background: #fff;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.oneclaw-skills-page__content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 2px solid #1f1f1f;
+  background: #f2f0ea;
+  padding: 10px;
+}
+
+.oneclaw-skills-page__table {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  margin-bottom: 12px;
+}
+
+.oneclaw-skills-page__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  border: 2px solid #1f1f1f;
+  background: #fff;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.oneclaw-skills-page__cell:hover {
+  background: #f9f6ee;
+}
+
+.oneclaw-skills-page__cell.is-active {
+  border-color: #b24b37;
+  background: #f7e8e4;
+}
+
+.oneclaw-skills-page__cell-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111;
+  line-height: 1.2;
+}
+
+.oneclaw-skills-page__cell-source {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #8a8a8a;
+  background: #f7f6f2;
+  color: #444;
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+.oneclaw-skills-page__cell-desc {
+  font-size: 12px;
+  line-height: 1.35;
+  color: #555;
+}
+
+.oneclaw-skills-page__cell-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.oneclaw-skills-page__details {
+  border: 2px solid #1f1f1f;
+  background: #fff;
+  padding: 10px;
+}
+
+.oneclaw-skills-page__details-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #111;
+}
+
+.oneclaw-skills-page__detail-row {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 0;
+  border-top: 1px solid #d7d2c8;
+}
+
+.oneclaw-skills-page__detail-row:first-of-type {
+  border-top: none;
+}
+
+.oneclaw-skills-page__detail-key {
+  font-size: 12px;
+  color: #555;
+}
+
+.oneclaw-skills-page__detail-value {
+  font-size: 13px;
+  color: #111;
+}
+
+.oneclaw-skills-page__detail-path {
+  font-size: 11px;
+  color: #666;
+  word-break: break-all;
+}
+
+.oneclaw-skills-page__detail-actions {
+  margin-top: 10px;
+}
+
+.oneclaw-skills-page__item-open {
+  border: 2px solid #1f1f1f !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+}
+
+.oneclaw-skills-page__empty {
+  border: 2px dashed #8e8e8e;
+  background: #fff;
+  color: #555;
+  padding: 12px;
+  font-size: 13px;
+}
+
+.oneclaw-skills-page__empty.is-error {
+  border-color: #b24b37;
+  color: #8f2f20;
+  background: #f7e8e4;
 }

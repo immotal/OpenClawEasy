@@ -1,4 +1,6 @@
 import { app, dialog, ipcMain, shell, Menu, BrowserWindow } from "electron";
+import * as fs from "fs";
+import * as path from "path";
 import { GatewayProcess } from "./gateway-process";
 import { WindowManager } from "./window";
 import { TrayManager } from "./tray";
@@ -17,7 +19,13 @@ import {
   setProgressCallback,
   setUpdateBannerStateCallback,
 } from "./auto-updater";
-import { isSetupComplete, DEFAULT_PORT, resolveGatewayLogPath } from "./constants";
+import {
+  isSetupComplete,
+  DEFAULT_PORT,
+  resolveGatewayCwd,
+  resolveGatewayLogPath,
+  resolveUserStateDir,
+} from "./constants";
 import { resolveGatewayAuthToken } from "./gateway-auth";
 import {
   getConfigRecoveryData,
@@ -352,6 +360,236 @@ function requestGatewayStop(source: string): void {
   }
 }
 
+type InstalledSkillInfo = {
+  name: string;
+  source: "bundled" | "workspace" | "global";
+  path: string;
+};
+
+type GithubSkillSearchItem = {
+  id: string;
+  name: string;
+  repoFullName: string;
+  repoUrl: string;
+  skillPath: string;
+  htmlUrl: string;
+  description: string;
+};
+
+function collectSkillsFromBase(
+  baseDir: string,
+  source: "bundled" | "workspace" | "global",
+): InstalledSkillInfo[] {
+  if (!fs.existsSync(baseDir)) {
+    return [];
+  }
+
+  const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+  const skills: InstalledSkillInfo[] = [];
+
+  const pushIfSkillDir = (skillDir: string, skillName: string) => {
+    const skillFile = path.join(skillDir, "SKILL.md");
+    if (!fs.existsSync(skillFile)) {
+      return;
+    }
+    skills.push({
+      name: skillName,
+      source,
+      path: skillDir,
+    });
+  };
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const firstLevel = path.join(baseDir, entry.name);
+    pushIfSkillDir(firstLevel, entry.name);
+
+    // Support nested namespaces like skills/vendor/skill-name
+    const secondLevelEntries = fs.existsSync(firstLevel)
+      ? fs.readdirSync(firstLevel, { withFileTypes: true })
+      : [];
+    for (const child of secondLevelEntries) {
+      if (!child.isDirectory()) continue;
+      const secondLevel = path.join(firstLevel, child.name);
+      pushIfSkillDir(secondLevel, `${entry.name}/${child.name}`);
+    }
+  }
+
+  return skills;
+}
+
+function resolveUserWorkspaceSkillsDir(): string {
+  return path.join(resolveUserStateDir(), "workspace", "skills");
+}
+
+function resolveUserGlobalSkillsDir(): string {
+  return path.join(resolveUserStateDir(), "skills");
+}
+
+function listInstalledSkills(): InstalledSkillInfo[] {
+  const bundledSkillsDir = path.join(resolveGatewayCwd(), "skills");
+  const workspaceSkillsDir = resolveUserWorkspaceSkillsDir();
+  const globalSkillsDir = resolveUserGlobalSkillsDir();
+  const merged: InstalledSkillInfo[] = [
+    ...collectSkillsFromBase(bundledSkillsDir, "bundled"),
+    ...collectSkillsFromBase(workspaceSkillsDir, "workspace"),
+    ...collectSkillsFromBase(globalSkillsDir, "global"),
+  ];
+  const unique = new Map<string, InstalledSkillInfo>();
+  for (const item of merged) {
+    unique.set(`${item.source}:${item.name}:${item.path}`, item);
+  }
+  return Array.from(unique.values()).sort((a, b) => {
+    const sourceDiff = a.source.localeCompare(b.source);
+    if (sourceDiff !== 0) {
+      return sourceDiff;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function sanitizeSkillDirName(input: string): string {
+  const normalized = String(input || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized || "skill";
+}
+
+function resolveUniqueInstallPath(baseDir: string, baseName: string): string {
+  const initial = path.join(baseDir, baseName);
+  if (!fs.existsSync(initial)) {
+    return initial;
+  }
+  for (let i = 2; i <= 9999; i += 1) {
+    const candidate = path.join(baseDir, `${baseName}-${i}`);
+    if (!fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error("Failed to allocate a unique install directory for this skill");
+}
+
+function normalizeRepoSkillPath(input: string): string {
+  const value = String(input || "").trim().replace(/\\/g, "/");
+  if (!value) {
+    return ".";
+  }
+  const normalized = path.posix.normalize(value);
+  if (normalized === ".." || normalized.startsWith("../")) {
+    throw new Error("Invalid skill path");
+  }
+  return normalized || ".";
+}
+
+async function searchGithubSkills(query: string): Promise<GithubSkillSearchItem[]> {
+  const searchText = String(query || "").trim();
+  if (searchText.length < 2) {
+    return [];
+  }
+  const q = `${searchText} filename:SKILL.md path:skills`;
+  const url = `https://api.github.com/search/code?q=${encodeURIComponent(q)}&per_page=20`;
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "OpenClawEasy/skill-search",
+    },
+  });
+  if (!response.ok) {
+    const message = `GitHub search failed: ${response.status} ${response.statusText}`;
+    throw new Error(message);
+  }
+  const payload = await response.json() as {
+    items?: Array<{
+      sha?: string;
+      path?: string;
+      html_url?: string;
+      repository?: {
+        full_name?: string;
+        html_url?: string;
+        description?: string;
+      };
+    }>;
+  };
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  const deduped = new Map<string, GithubSkillSearchItem>();
+  for (const item of items) {
+    const repoFullName = String(item.repository?.full_name || "").trim();
+    const repoUrl = String(item.repository?.html_url || "").trim();
+    const filePath = String(item.path || "").trim();
+    if (!repoFullName || !repoUrl || !filePath) {
+      continue;
+    }
+    const skillPath = path.posix.dirname(filePath);
+    const lastSegment = skillPath === "." ? repoFullName.split("/").pop() ?? "skill" : path.posix.basename(skillPath);
+    const key = `${repoFullName}:${skillPath}`;
+    if (deduped.has(key)) {
+      continue;
+    }
+    deduped.set(key, {
+      id: key,
+      name: lastSegment,
+      repoFullName,
+      repoUrl,
+      skillPath,
+      htmlUrl: String(item.html_url || repoUrl),
+      description: String(item.repository?.description || "").trim(),
+    });
+  }
+  return Array.from(deduped.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function installGithubSkill(params: {
+  repoFullName: string;
+  skillPath: string;
+  name?: string;
+}): Promise<{ name: string; path: string }> {
+  const repoFullName = String(params.repoFullName || "").trim();
+  if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repoFullName)) {
+    throw new Error("Invalid GitHub repository name");
+  }
+  const normalizedSkillPath = normalizeRepoSkillPath(params.skillPath);
+  const tempRoot = fs.mkdtempSync(path.join(app.getPath("temp"), "openclaw-skill-"));
+  const repoDir = path.join(tempRoot, "repo");
+  const repoUrl = `https://github.com/${repoFullName}.git`;
+  try {
+    const cp = await import("child_process");
+    cp.execFileSync("git", ["clone", "--depth", "1", repoUrl, repoDir], {
+      stdio: "ignore",
+      windowsHide: true,
+      timeout: 120000,
+    });
+    const sourceDir = normalizedSkillPath === "."
+      ? repoDir
+      : path.join(repoDir, ...normalizedSkillPath.split("/"));
+    const skillFilePath = path.join(sourceDir, "SKILL.md");
+    if (!fs.existsSync(sourceDir) || !fs.statSync(sourceDir).isDirectory() || !fs.existsSync(skillFilePath)) {
+      throw new Error("The selected GitHub path does not contain a valid SKILL.md");
+    }
+    const installBaseDir = resolveUserWorkspaceSkillsDir();
+    fs.mkdirSync(installBaseDir, { recursive: true });
+    const fallbackName = normalizedSkillPath === "."
+      ? repoFullName.split("/")[1]
+      : path.posix.basename(normalizedSkillPath);
+    const requestedName = String(params.name || "").trim() || fallbackName;
+    const targetBaseName = sanitizeSkillDirName(requestedName);
+    const targetDir = resolveUniqueInstallPath(installBaseDir, targetBaseName);
+    fs.cpSync(sourceDir, targetDir, {
+      recursive: true,
+      force: false,
+      errorOnExist: true,
+    });
+    return {
+      name: path.basename(targetDir),
+      path: targetDir,
+    };
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
 // ── IPC 注册 ──
 
 ipcMain.on("gateway:restart", () => requestGatewayRestart("ipc:restart"));
@@ -364,6 +602,54 @@ ipcMain.handle("app:download-and-install-update", () => downloadAndInstallUpdate
 ipcMain.handle("app:get-feishu-pairing-state", () => feishuPairingMonitor?.getState());
 ipcMain.on("app:refresh-feishu-pairing-state", () => feishuPairingMonitor?.triggerNow());
 ipcMain.handle("app:open-external", (_e, url: string) => shell.openExternal(url));
+ipcMain.handle("app:list-installed-skills", () => {
+  try {
+    return {
+      success: true,
+      data: listInstalledSkills(),
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || String(err),
+    };
+  }
+});
+ipcMain.handle("app:search-github-skills", async (_e, rawQuery: unknown) => {
+  try {
+    const query = String(rawQuery ?? "");
+    return {
+      success: true,
+      data: await searchGithubSkills(query),
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || String(err),
+    };
+  }
+});
+ipcMain.handle("app:install-github-skill", async (_e, payload: unknown) => {
+  try {
+    const params = payload && typeof payload === "object"
+      ? (payload as { repoFullName?: string; skillPath?: string; name?: string })
+      : {};
+    const result = await installGithubSkill({
+      repoFullName: String(params.repoFullName || ""),
+      skillPath: String(params.skillPath || "."),
+      name: params.name,
+    });
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || String(err),
+    };
+  }
+});
 
 // Chat UI 侧边栏 IPC
 ipcMain.on("app:open-settings", () => {

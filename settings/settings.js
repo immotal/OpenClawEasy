@@ -1650,14 +1650,25 @@
 
   function loadAppearanceFromLocalStorage() {
     try {
-      var raw = localStorage.getItem("openclaw.control.settings.v1");
-      if (!raw) return;
+      var key = "openclaw.control.settings.v1";
+      var raw = localStorage.getItem(key);
+      if (!raw) {
+        // 默认关闭“显示思考过程”，并显式写回，避免历史配置缺失该字段。
+        saveAppearanceToLocalStorage(getAppearanceThemeValue(), false);
+        return;
+      }
       var parsed = JSON.parse(raw);
       var theme = parsed && parsed.theme;
       var showThinking = parsed && parsed.chatShowThinking;
+      if (typeof showThinking !== "boolean") {
+        saveAppearanceToLocalStorage(
+          theme === "light" || theme === "dark" || theme === "system" ? theme : "system",
+          false,
+        );
+      }
       applyAppearanceState(
         theme === "light" || theme === "dark" || theme === "system" ? theme : "system",
-        typeof showThinking === "boolean" ? showThinking : true,
+        typeof showThinking === "boolean" ? showThinking : false,
       );
     } catch {
       // ignore malformed local cache
@@ -1727,6 +1738,11 @@
     var showThinking = !!els.appearanceShowThinking.checked;
 
     try {
+      // 先本地持久化，确保开关变更总能落到 openclaw.control.settings.v1。
+      var ok = saveAppearanceToLocalStorage(theme, showThinking);
+      if (!ok) {
+        throw new Error("save appearance failed");
+      }
       if (isEmbeddedSettings() && window.parent && window.parent !== window) {
         window.parent.postMessage(
           {
@@ -1736,11 +1752,6 @@
           },
           "*",
         );
-      } else {
-        var ok = saveAppearanceToLocalStorage(theme, showThinking);
-        if (!ok) {
-          throw new Error("save appearance failed");
-        }
       }
       setAppearanceSaving(false);
       showToast(t("common.saved"));
@@ -1752,8 +1763,8 @@
 
   function loadAppearanceSettings() {
     loadAppearanceFromQuery();
+    loadAppearanceFromLocalStorage();
     if (!isEmbeddedSettings()) {
-      loadAppearanceFromLocalStorage();
       return;
     }
     window.addEventListener("message", handleAppearanceInitMessage);
@@ -2631,6 +2642,9 @@
 
     // Appearance
     els.btnAppearanceSave.addEventListener("click", handleAppearanceSave);
+    if (els.appearanceShowThinking) {
+      els.appearanceShowThinking.addEventListener("change", handleAppearanceSave);
+    }
 
     // Backup
     if (els.btnRestoreLastKnownGood) {

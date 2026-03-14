@@ -15,6 +15,7 @@ export type SidebarProps = {
   sessionOptions: Array<{ key: string; label: string }>;
   chatActive: boolean;
   settingsActive: boolean;
+  skillsActive: boolean;
   updateStatus: "hidden" | "available" | "downloading";
   updateVersion: string | null;
   updatePercent: number | null;
@@ -26,6 +27,7 @@ export type SidebarProps = {
   onRefresh: () => void;
   onNewChat: () => void;
   onOpenSettings: () => void;
+  onOpenSkills: () => void;
   onOpenWebUI: () => void;
   onOpenDocs: () => void;
   onApplyUpdate: () => void;
@@ -57,6 +59,13 @@ export function renderSidebar(props: SidebarProps) {
         String(Math.max(0, Math.min(100, Math.round(props.updatePercent ?? 0)))),
       )
     : t("sidebar.updateReady");
+  const closeMoreMenu = (event: Event) => {
+    const target = event.currentTarget as HTMLElement | null;
+    const details = target?.closest("details");
+    if (details) {
+      details.removeAttribute("open");
+    }
+  };
 
   return html`
     <aside class="oneclaw-sidebar">
@@ -98,7 +107,9 @@ export function renderSidebar(props: SidebarProps) {
 
       <nav class="oneclaw-sidebar__nav">
         <button
-          class="oneclaw-sidebar__item ${props.chatActive ? "active" : ""}"
+          class="oneclaw-sidebar__item oneclaw-sidebar__item--quick-chat ${props.chatActive
+            ? "active"
+            : ""}"
           type="button"
           @click=${props.onOpenChat}
           title=${t("sidebar.chat")}
@@ -107,27 +118,56 @@ export function renderSidebar(props: SidebarProps) {
           <span class="oneclaw-sidebar__label">${t("sidebar.chat")}</span>
         </button>
 
-        <button
-          class="oneclaw-sidebar__item"
-          type="button"
-          @click=${props.onNewChat}
-          title=${t("sidebar.newChat")}
-        >
-          <span class="oneclaw-sidebar__icon">${icons.plus}</span>
-          <span class="oneclaw-sidebar__label">${t("sidebar.newChat")}</span>
-        </button>
-
-        <button
-          class="oneclaw-sidebar__item"
-          type="button"
-          @click=${props.onOpenWebUI}
-          title=${t("sidebar.openWebUI")}
-        >
-          <span class="oneclaw-sidebar__icon">${icons.externalLink}</span>
-          <span class="oneclaw-sidebar__label">${t("sidebar.openWebUI")}</span>
-        </button>
-
-        <div class="oneclaw-sidebar__divider"></div>
+        <details class="oneclaw-sidebar__more">
+          <summary class="oneclaw-sidebar__item oneclaw-sidebar__item--more" title=${t("sidebar.more")}>
+            <span class="oneclaw-sidebar__icon">${icons.menu}</span>
+            <span class="oneclaw-sidebar__label">${t("sidebar.more")}</span>
+          </summary>
+          <div class="oneclaw-sidebar__more-menu">
+            <button class="oneclaw-sidebar__more-item ${props.skillsActive ? "is-active" : ""}" type="button" @click=${(event: Event) => {
+              closeMoreMenu(event);
+              props.onOpenSkills();
+            }}>
+              <span class="oneclaw-sidebar__icon">${icons.puzzle}</span>
+              <span>${t("sidebar.skills")}</span>
+            </button>
+            <button class="oneclaw-sidebar__more-item" type="button" @click=${(event: Event) => {
+              closeMoreMenu(event);
+              props.onNewChat();
+            }}>
+              <span class="oneclaw-sidebar__icon">${icons.plus}</span>
+              <span>${t("sidebar.newChat")}</span>
+            </button>
+            <button class="oneclaw-sidebar__more-item" type="button" @click=${(event: Event) => {
+              closeMoreMenu(event);
+              props.onOpenWebUI();
+            }}>
+              <span class="oneclaw-sidebar__icon">${icons.externalLink}</span>
+              <span>${t("sidebar.openWebUI")}</span>
+            </button>
+            <button class="oneclaw-sidebar__more-item" type="button" @click=${(event: Event) => {
+              closeMoreMenu(event);
+              props.onOpenSettings();
+            }}>
+              <span class="oneclaw-sidebar__icon">${icons.settings}</span>
+              <span>${t("sidebar.settings")}</span>
+            </button>
+            <button class="oneclaw-sidebar__more-item" type="button" @click=${(event: Event) => {
+              closeMoreMenu(event);
+              props.onOpenDocs();
+            }}>
+              <span class="oneclaw-sidebar__icon">${icons.book}</span>
+              <span>${t("sidebar.docs")}</span>
+            </button>
+            <button class="oneclaw-sidebar__more-item" type="button" @click=${(event: Event) => {
+              closeMoreMenu(event);
+              props.onRefresh();
+            }}>
+              <span class="oneclaw-sidebar__icon">${icons.loader}</span>
+              <span>${t("sidebar.refresh")}</span>
+            </button>
+          </div>
+        </details>
 
         <div class="oneclaw-sidebar__section oneclaw-sidebar__section--agent">
           <label class="oneclaw-sidebar__section-title" for="oneclaw-session-select">
