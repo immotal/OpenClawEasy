@@ -24,10 +24,14 @@ export type SidebarProps = {
   onToggleSidebar: () => void;
   onOpenChat: () => void;
   onSelectSession: (sessionKey: string) => void;
+  exportSelecting: boolean;
+  exportSelectedCount: number;
   onRefresh: () => void;
   onNewChat: () => void;
   onOpenSettings: () => void;
   onOpenSkills: () => void;
+  onSelectExportRounds: () => void;
+  exportBusy: boolean;
   onOpenWebUI: () => void;
   onOpenDocs: () => void;
   onApplyUpdate: () => void;
@@ -145,6 +149,13 @@ export function renderSidebar(props: SidebarProps) {
               <span class="oneclaw-sidebar__icon">${icons.externalLink}</span>
               <span>${t("sidebar.openWebUI")}</span>
             </button>
+            <button class="oneclaw-sidebar__more-item ${props.exportSelecting ? "is-active" : ""}" type="button" ?disabled=${props.exportBusy} @click=${(event: Event) => {
+              closeMoreMenu(event);
+              props.onSelectExportRounds();
+            }}>
+              <span class="oneclaw-sidebar__icon">${icons.fileText}</span>
+              <span>选择并导出${props.exportSelectedCount > 0 ? ` (${props.exportSelectedCount})` : ""}</span>
+            </button>
             <button class="oneclaw-sidebar__more-item" type="button" @click=${(event: Event) => {
               closeMoreMenu(event);
               props.onOpenSettings();
@@ -171,7 +182,7 @@ export function renderSidebar(props: SidebarProps) {
 
         <div class="oneclaw-sidebar__section oneclaw-sidebar__section--agent">
           <label class="oneclaw-sidebar__section-title" for="oneclaw-session-select">
-            ${t("sidebar.agent")}
+            ${props.exportSelecting ? "Round select mode" : t("sidebar.agent")}
           </label>
           <div class="oneclaw-sidebar__select-wrap">
             <select

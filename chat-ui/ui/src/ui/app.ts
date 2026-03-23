@@ -192,6 +192,24 @@ type OneClawBridge = {
     data?: { name?: string; path?: string };
     message?: string;
   }>;
+  chooseExportDirectory?: () => Promise<{
+    success?: boolean;
+    cancelled?: boolean;
+    path?: string;
+  }>;
+  exportConversations?: (params: {
+    outputDir: string;
+    format: "markdown" | "html" | "pdf" | "png";
+    items: Array<{
+      sessionKey: string;
+      label?: string | null;
+      messages: unknown[];
+    }>;
+  }) => Promise<{
+    success?: boolean;
+    data?: { files?: string[] };
+    message?: string;
+  }>;
 };
 
 const SHARE_PROMPT_STORE_KEY = "openclaw.share.prompt.v1";
@@ -405,6 +423,10 @@ export class OpenClawApp extends LitElement {
     logsMaxBytes: { state: true },
     logsAtBottom: { state: true },
     chatNewMessagesBelow: { state: true },
+    chatExportBusy: { state: true },
+    chatExportSelectedKeys: { state: true },
+    chatExportSelecting: { state: true },
+    chatExportFormat: { state: true },
     sharePromptVisible: { state: true },
     sharePromptCopied: { state: true },
     sharePromptCopyError: { state: true },
@@ -678,6 +700,11 @@ export class OpenClawApp extends LitElement {
   private chatHasAutoScrolled = false;
   private chatUserNearBottom = true;
   chatNewMessagesBelow = false;
+  chatExportBusy = false;
+  chatExportSelectedKeys: string[] = [];
+  chatExportSelectedItems: Array<{ key: string; order: number; messages: unknown[] }> = [];
+  chatExportSelecting = false;
+  chatExportFormat: "markdown" | "html" | "pdf" | "png" = "html";
   sharePromptVisible = false;
   sharePromptCopied = false;
   sharePromptCopyError: string | null = null;
@@ -1305,6 +1332,103 @@ export class OpenClawApp extends LitElement {
     );
     if (accepted && isSharePromptCountableInput(inputText)) {
       this.recordSharePromptInput();
+    }
+  }
+
+  async handleExportConversations(params: {
+    messages: unknown[];
+    format: "markdown" | "html" | "pdf" | "png";
+  }) {
+    if (this.chatExportBusy) {
+      return;
+    }
+    const selectedMessages = Array.isArray(params.messages) ? params.messages : [];
+    if (selectedMessages.length === 0) {
+      window.alert("Please select at least one round to export.");
+      return;
+    }
+    const bridge = this.getOneClawBridge();
+    if (!bridge?.chooseExportDirectory || !bridge.exportConversations) {
+      window.alert("Export is unavailable in this environment.");
+      return;
+    }
+    this.chatExportBusy = true;
+    try {
+      const dirResult = await bridge.chooseExportDirectory();
+      if (!dirResult?.success || !dirResult.path) {
+        return;
+      }
+      const row = this.sessionsResult?.sessions?.find((s) => s.key === this.sessionKey);
+      const label = typeof row?.displayName === "string" && row.displayName.trim()
+        ? row.displayName.trim()
+        : typeof row?.label === "string" && row.label.trim()
+          ? row.label.trim()
+          : this.sessionKey;
+      const items = [{
+        sessionKey: this.sessionKey,
+        label,
+        messages: selectedMessages,
+      }];
+      const result = await bridge.exportConversations({
+        outputDir: dirResult.path,
+        format: params.format,
+        items,
+      });
+      if (!result?.success) {
+        window.alert(result?.message || "Export failed.");
+        return;
+      }
+      const count = Array.isArray(result?.data?.files) ? result.data.files.length : items.length;
+      window.alert(`Export completed: ${count} file(s) generated.`);
+    } catch (err: any) {
+      window.alert(err?.message || String(err));
+    } finally {
+      this.chatExportBusy = false;
+    }
+  }
+
+  selectExportRounds() {
+    if (this.chatExportSelecting) {
+      this.chatExportSelecting = false;
+      return;
+    }
+    this.chatExportSelectedKeys = [];
+    this.chatExportSelectedItems = [];
+    this.chatExportSelecting = true;
+  }
+
+  toggleExportItem(item: { key: string; order: number; messages: unknown[] }) {
+    const key = String(item?.key || "").trim();
+    if (!key) return;
+    if (this.chatExportSelectedKeys.includes(key)) {
+      this.chatExportSelectedKeys = this.chatExportSelectedKeys.filter((x) => x !== key);
+      this.chatExportSelectedItems = this.chatExportSelectedItems.filter((x) => x.key !== key);
+      return;
+    }
+    const nextItem = {
+      key,
+      order: Number(item.order) || 0,
+      messages: Array.isArray(item.messages) ? item.messages : [],
+    };
+    this.chatExportSelectedKeys = [...this.chatExportSelectedKeys, key];
+    this.chatExportSelectedItems = [...this.chatExportSelectedItems, nextItem];
+  }
+
+  async exportSelectedRoundsFromMore() {
+    if (this.chatExportSelectedItems.length === 0) {
+      window.alert("Please select rounds first.");
+      return;
+    }
+    const ordered = [...this.chatExportSelectedItems]
+      .sort((a, b) => a.order - b.order)
+      .flatMap((entry) => entry.messages);
+    await this.handleExportConversations({ messages: ordered, format: this.chatExportFormat });
+    this.chatExportSelecting = false;
+  }
+
+  setChatExportFormat(next: string) {
+    if (next === "markdown" || next === "html" || next === "pdf" || next === "png") {
+      this.chatExportFormat = next;
     }
   }
 

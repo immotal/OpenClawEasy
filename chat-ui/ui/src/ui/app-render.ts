@@ -31,6 +31,8 @@ declare global {
         skillPath: string;
         name?: string;
       }) => Promise<unknown>;
+      chooseExportDirectory?: () => Promise<unknown>;
+      exportConversations?: (params: unknown) => Promise<unknown>;
     };
   }
 }
@@ -677,10 +679,14 @@ export function renderApp(state: AppViewState) {
             updatePercent: updateBannerState.percent,
             updateShowBadge: updateBannerState.showBadge,
             refreshDisabled: state.chatLoading || !state.connected,
+            exportBusy: state.chatExportBusy,
+            exportSelectedCount: state.chatExportSelectedKeys.length,
+            exportSelecting: state.chatExportSelecting,
             onOpenChat: () => setOneClawView(state, "chat"),
             onNewChat: () => confirmAndCreateNewSession(state),
             onSelectSession: (nextSessionKey: string) => handleSessionChange(state, nextSessionKey),
             onRefresh: () => void handleRefreshChat(state),
+            onSelectExportRounds: () => state.selectExportRounds(),
             onToggleSidebar: () => {
               state.applySettings({
                 ...state.settings,
@@ -771,6 +777,15 @@ export function renderApp(state: AppViewState) {
                   onAbort: () => void state.handleAbortChat(),
                   onQueueRemove: (id) => state.removeQueuedMessage(id),
                   onNewSession: () => confirmAndCreateNewSession(state),
+                  exportSelecting: state.chatExportSelecting,
+                  exportSelectedKeys: state.chatExportSelectedKeys,
+                  onToggleExportItem: (item: { key: string; order: number; messages: unknown[] }) =>
+                    state.toggleExportItem(item),
+                  exportBusy: state.chatExportBusy,
+                  exportFormat: state.chatExportFormat,
+                  onExportFormatChange: (next: "markdown" | "html" | "pdf" | "png") =>
+                    state.setChatExportFormat(next),
+                  onExportSelectedRounds: () => void state.exportSelectedRoundsFromMore(),
                   showNewMessages: state.chatNewMessagesBelow && !state.chatManualRefreshInFlight,
                   onScrollToBottom: () => state.scrollToBottom(),
                   sidebarOpen: state.sidebarOpen,

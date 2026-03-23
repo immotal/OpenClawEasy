@@ -143,4 +143,14 @@ contextBridge.exposeInMainWorld("oneclaw", {
   searchGithubSkills: (query: string) => ipcRenderer.invoke("app:search-github-skills", query),
   installGithubSkill: (params: { repoFullName: string; skillPath: string; name?: string }) =>
     ipcRenderer.invoke("app:install-github-skill", params),
+  chooseExportDirectory: () => ipcRenderer.invoke("app:choose-export-directory"),
+  exportConversations: (params: {
+    outputDir: string;
+    format: "markdown" | "html" | "pdf" | "png";
+    items: Array<{
+      sessionKey: string;
+      label?: string | null;
+      messages: unknown[];
+    }>;
+  }) => ipcRenderer.invoke("app:export-conversations", params),
 });

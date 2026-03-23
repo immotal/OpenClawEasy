@@ -376,6 +376,14 @@ type GithubSkillSearchItem = {
   description: string;
 };
 
+type ExportConversationItem = {
+  sessionKey: string;
+  label?: string | null;
+  messages: unknown[];
+};
+
+type ExportFormat = "markdown" | "html" | "pdf" | "png";
+
 function collectSkillsFromBase(
   baseDir: string,
   source: "bundled" | "workspace" | "global",
@@ -399,17 +407,40 @@ function collectSkillsFromBase(
     });
   };
 
+  const isDirectoryLike = (parentDir: string, entry: fs.Dirent): boolean => {
+    if (entry.isDirectory()) {
+      return true;
+    }
+    if (!entry.isSymbolicLink()) {
+      return false;
+    }
+    try {
+      const resolved = path.join(parentDir, entry.name);
+      return fs.statSync(resolved).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+
+  const readDirEntries = (dir: string): fs.Dirent[] => {
+    try {
+      return fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+  };
+
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    if (!isDirectoryLike(baseDir, entry)) continue;
     const firstLevel = path.join(baseDir, entry.name);
     pushIfSkillDir(firstLevel, entry.name);
 
     // Support nested namespaces like skills/vendor/skill-name
     const secondLevelEntries = fs.existsSync(firstLevel)
-      ? fs.readdirSync(firstLevel, { withFileTypes: true })
+      ? readDirEntries(firstLevel)
       : [];
     for (const child of secondLevelEntries) {
-      if (!child.isDirectory()) continue;
+      if (!isDirectoryLike(firstLevel, child)) continue;
       const secondLevel = path.join(firstLevel, child.name);
       pushIfSkillDir(secondLevel, `${entry.name}/${child.name}`);
     }
@@ -456,6 +487,183 @@ function sanitizeSkillDirName(input: string): string {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
   return normalized || "skill";
+}
+
+function sanitizeFileName(input: string): string {
+  const normalized = String(input || "")
+    .trim()
+    .replace(/[<>:"/\\|?*\x00-\x1F]+/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/-+/g, "-")
+    .replace(/^[-.\s]+|[-.\s]+$/g, "");
+  return normalized || "conversation";
+}
+
+function resolveExportExtension(format: ExportFormat): string {
+  if (format === "markdown") return "md";
+  if (format === "html") return "html";
+  if (format === "pdf") return "pdf";
+  return "png";
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function extractTextBlocks(message: unknown): string {
+  const m = message as Record<string, unknown>;
+  const content = m.content;
+  if (typeof content === "string") {
+    return content.trim();
+  }
+  if (Array.isArray(content)) {
+    const chunks: string[] = [];
+    for (const item of content) {
+      if (!item || typeof item !== "object") continue;
+      const block = item as Record<string, unknown>;
+      const text = typeof block.text === "string" ? block.text : "";
+      if (text.trim()) chunks.push(text.trim());
+    }
+    return chunks.join("\n\n").trim();
+  }
+  if (typeof m.text === "string") {
+    return m.text.trim();
+  }
+  return "";
+}
+
+function renderConversationMarkdown(item: ExportConversationItem): string {
+  const lines: string[] = [];
+  lines.push(`# ${item.label?.trim() || item.sessionKey}`);
+  lines.push("");
+  lines.push(`- Session: \`${item.sessionKey}\``);
+  lines.push(`- Exported at: ${new Date().toISOString()}`);
+  lines.push("");
+  lines.push("---");
+  lines.push("");
+  for (const raw of item.messages) {
+    const m = raw as Record<string, unknown>;
+    const role = typeof m.role === "string" ? m.role : "unknown";
+    const ts = typeof m.timestamp === "number" ? new Date(m.timestamp).toISOString() : "";
+    const text = extractTextBlocks(raw);
+    lines.push(`## ${role}${ts ? ` · ${ts}` : ""}`);
+    lines.push("");
+    lines.push(text || "_(no text content)_");
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+function renderConversationHtml(item: ExportConversationItem): string {
+  const title = item.label?.trim() || item.sessionKey;
+  const messageHtml = item.messages.map((raw) => {
+    const m = raw as Record<string, unknown>;
+    const role = typeof m.role === "string" ? m.role : "unknown";
+    const ts = typeof m.timestamp === "number" ? new Date(m.timestamp).toLocaleString() : "";
+    const text = extractTextBlocks(raw);
+    return `
+      <section class="export-message export-role-${escapeHtml(role)}">
+        <header class="export-message__meta">
+          <span class="export-message__role">${escapeHtml(role)}</span>
+          ${ts ? `<span class="export-message__time">${escapeHtml(ts)}</span>` : ""}
+        </header>
+        <pre class="export-message__text">${escapeHtml(text || "")}</pre>
+      </section>
+    `;
+  }).join("\n");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+    :root { color-scheme: dark; }
+    body { margin: 0; padding: 24px; background: #12141a; color: #e4e4e7; font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .export-wrap { max-width: 940px; margin: 0 auto; }
+    .export-title { font-size: 24px; margin: 0 0 8px; color: #fafafa; }
+    .export-sub { font-size: 13px; color: #9ca3af; margin: 0 0 20px; }
+    .export-message { border: 1px solid #27272a; background: #181b22; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+    .export-message__meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .export-message__role { font-size: 12px; font-weight: 700; color: #c0392b; text-transform: none; }
+    .export-message__time { font-size: 12px; color: #71717a; }
+    .export-message__text { white-space: pre-wrap; word-break: break-word; margin: 0; font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; color: #e4e4e7; }
+  </style>
+</head>
+<body>
+  <main class="export-wrap">
+    <h1 class="export-title">${escapeHtml(title)}</h1>
+    <p class="export-sub">Session: ${escapeHtml(item.sessionKey)} · Exported at ${escapeHtml(new Date().toLocaleString())}</p>
+    ${messageHtml}
+  </main>
+</body>
+</html>`;
+}
+
+async function writeConversationExportFile(
+  outputDir: string,
+  format: ExportFormat,
+  item: ExportConversationItem,
+): Promise<string> {
+  const baseName = sanitizeFileName(item.label?.trim() || item.sessionKey);
+  const ext = resolveExportExtension(format);
+  const outputPath = path.join(outputDir, `${baseName}.${ext}`);
+  if (format === "markdown") {
+    fs.writeFileSync(outputPath, renderConversationMarkdown(item), "utf-8");
+    return outputPath;
+  }
+  const htmlDoc = renderConversationHtml(item);
+  if (format === "html") {
+    fs.writeFileSync(outputPath, htmlDoc, "utf-8");
+    return outputPath;
+  }
+
+  const exportWindow = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    show: false,
+    webPreferences: {
+      sandbox: true,
+      contextIsolation: true,
+    },
+  });
+  try {
+    const encoded = Buffer.from(htmlDoc, "utf-8").toString("base64");
+    await exportWindow.loadURL(`data:text/html;base64,${encoded}`);
+    await exportWindow.webContents.executeJavaScript(
+      `new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`,
+      true,
+    );
+    if (format === "pdf") {
+      const pdf = await exportWindow.webContents.printToPDF({
+        printBackground: true,
+        pageSize: "A4",
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      });
+      fs.writeFileSync(outputPath, pdf);
+      return outputPath;
+    }
+    const height = await exportWindow.webContents.executeJavaScript(
+      "Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 900)",
+      true,
+    ) as number;
+    exportWindow.setSize(1200, Math.min(16000, Math.max(900, Math.ceil(Number(height) || 900))));
+    await exportWindow.webContents.executeJavaScript(
+      `new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`,
+      true,
+    );
+    const image = await exportWindow.webContents.capturePage();
+    fs.writeFileSync(outputPath, image.toPNG());
+    return outputPath;
+  } finally {
+    exportWindow.destroy();
+  }
 }
 
 function resolveUniqueInstallPath(baseDir: string, baseName: string): string {
@@ -643,6 +851,60 @@ ipcMain.handle("app:install-github-skill", async (_e, payload: unknown) => {
       success: true,
       data: result,
     };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || String(err),
+    };
+  }
+});
+ipcMain.handle("app:choose-export-directory", async () => {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  const selected = focusedWindow
+    ? await dialog.showOpenDialog(focusedWindow, {
+      title: "Choose export directory",
+      properties: ["openDirectory", "createDirectory"],
+    })
+    : await dialog.showOpenDialog({
+    title: "Choose export directory",
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (selected.canceled || selected.filePaths.length === 0) {
+    return { success: false, cancelled: true };
+  }
+  return { success: true, path: selected.filePaths[0] };
+});
+ipcMain.handle("app:export-conversations", async (_e, payload: unknown) => {
+  try {
+    const body = payload && typeof payload === "object"
+      ? payload as {
+        outputDir?: string;
+        format?: string;
+        items?: unknown[];
+      }
+      : {};
+    const outputDir = String(body.outputDir || "").trim();
+    const format = String(body.format || "").trim().toLowerCase() as ExportFormat;
+    const itemsRaw = Array.isArray(body.items) ? body.items : [];
+    if (!outputDir) {
+      throw new Error("Missing output directory");
+    }
+    if (!["markdown", "html", "pdf", "png"].includes(format)) {
+      throw new Error("Unsupported export format");
+    }
+    fs.mkdirSync(outputDir, { recursive: true });
+    const items: ExportConversationItem[] = itemsRaw
+      .map((item) => item as ExportConversationItem)
+      .filter((item) => item && typeof item.sessionKey === "string" && Array.isArray(item.messages));
+    if (items.length === 0) {
+      throw new Error("No conversations selected for export");
+    }
+    const files: string[] = [];
+    for (const item of items) {
+      // Sequential export keeps memory usage predictable for pdf/png window rendering.
+      files.push(await writeConversationExportFile(outputDir, format, item));
+    }
+    return { success: true, data: { files } };
   } catch (err: any) {
     return {
       success: false,

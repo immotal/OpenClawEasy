@@ -67,6 +67,13 @@ export type ChatProps = {
   onAbort?: () => void;
   onQueueRemove: (id: string) => void;
   onNewSession: () => void;
+  exportSelecting?: boolean;
+  exportSelectedKeys?: string[];
+  onToggleExportItem?: (item: { key: string; order: number; messages: unknown[] }) => void;
+  exportBusy?: boolean;
+  exportFormat?: "markdown" | "html" | "pdf" | "png";
+  onExportFormatChange?: (next: "markdown" | "html" | "pdf" | "png") => void;
+  onExportSelectedRounds?: () => void;
   onOpenSidebar?: (content: string) => void;
   onCloseSidebar?: () => void;
   onSplitRatioChange?: (ratio: number) => void;
@@ -78,6 +85,12 @@ type ToolActivityStackItem = {
   key: string;
   groups: MessageGroup[];
   timestamp: number;
+};
+
+type ExportSelectableItem = {
+  key: string;
+  order: number;
+  messages: unknown[];
 };
 
 const COMPACTION_TOAST_DURATION_MS = 5000;
@@ -233,7 +246,7 @@ export function renderChat(props: ChatProps) {
       ${repeat(
         buildChatItems(props),
         (item) => item.key,
-        (item) => {
+        (item, index) => {
           if (item.kind === "divider") {
             return html`
               <div class="chat-divider" role="separator" data-ts=${String(item.timestamp)}>
@@ -258,21 +271,23 @@ export function renderChat(props: ChatProps) {
           }
 
           if (item.kind === "group") {
-            return renderMessageGroup(item, {
+            const content = renderMessageGroup(item, {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
               assistantName: props.assistantName,
               assistantAvatar: assistantIdentity.avatar,
             });
+            return wrapSelectableChatItem(props, item, index, content);
           }
 
           if (item.kind === "tool-stack") {
-            return renderToolActivityStack(item, {
+            const content = renderToolActivityStack(item, {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
               assistantName: props.assistantName,
               assistantAvatar: assistantIdentity.avatar,
             });
+            return wrapSelectableChatItem(props, item, index, content);
           }
 
           return nothing;
@@ -283,6 +298,38 @@ export function renderChat(props: ChatProps) {
 
   return html`
     <section class="card chat">
+      ${
+        props.exportSelecting
+          ? html`
+              <div class="chat-export-toolbar">
+                <span class="chat-export-toolbar__text">
+                  Selected rounds: ${(props.exportSelectedKeys ?? []).length}
+                </span>
+                <select
+                  class="chat-export-toolbar__format"
+                  .value=${props.exportFormat ?? "html"}
+                  @change=${(event: Event) =>
+                    props.onExportFormatChange?.(
+                      (event.target as HTMLSelectElement).value as "markdown" | "html" | "pdf" | "png",
+                    )}
+                >
+                  <option value="html">HTML</option>
+                  <option value="pdf">PDF</option>
+                  <option value="png">PNG</option>
+                  <option value="markdown">Markdown</option>
+                </select>
+                <button
+                  class="btn"
+                  type="button"
+                  ?disabled=${Boolean(props.exportBusy)}
+                  @click=${() => props.onExportSelectedRounds?.()}
+                >
+                  ${props.exportBusy ? "Exporting…" : "Export selected rounds"}
+                </button>
+              </div>
+            `
+          : nothing
+      }
       ${props.disabledReason ? html`<div class="callout">${props.disabledReason}</div>` : nothing}
 
       ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
@@ -539,6 +586,45 @@ function isAssistantToolOnlyMessage(
     }
   }
   return hasToolLike;
+}
+
+function wrapSelectableChatItem(
+  props: ChatProps,
+  item: MessageGroup | ToolActivityStackItem,
+  order: number,
+  content: unknown,
+) {
+  if (!props.exportSelecting) {
+    return content;
+  }
+  const selected = (props.exportSelectedKeys ?? []).includes(item.key);
+  const payload: ExportSelectableItem = {
+    key: item.key,
+    order,
+    messages: extractExportMessages(item),
+  };
+  return html`
+    <div class="chat-export-selectable ${selected ? "is-selected" : ""}">
+      <button
+        class="chat-export-selectable__toggle"
+        type="button"
+        aria-pressed=${selected ? "true" : "false"}
+        @click=${() => props.onToggleExportItem?.(payload)}
+      >
+        <span class="chat-export-selectable__circle" aria-hidden="true"></span>
+      </button>
+      <div class="chat-export-selectable__content">${content as any}</div>
+    </div>
+  `;
+}
+
+function extractExportMessages(item: MessageGroup | ToolActivityStackItem): unknown[] {
+  if (item.kind === "tool-stack") {
+    return item.groups.flatMap((group) =>
+      (group.messages as Array<{ message?: unknown }>).map((entry) => entry?.message).filter(Boolean),
+    );
+  }
+  return (item.messages as Array<{ message?: unknown }>).map((entry) => entry?.message).filter(Boolean);
 }
 
 function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup | ToolActivityStackItem> {
