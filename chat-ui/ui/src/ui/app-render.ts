@@ -159,6 +159,26 @@ function resolveSessionOptions(state: AppViewState): Array<{ key: string; label:
     pushOption(session.key, session);
   }
 
+  // Add synthetic agent sessions so you can switch between multiple agents
+  // even if those sessions haven't been created yet.
+  const agents = state.agentsList?.agents ?? [];
+  const agentRest = (mainSessionKey ?? "main").trim();
+  if (agents.length > 0) {
+    for (const agent of agents) {
+      const agentId = String(agent?.id ?? "").trim();
+      if (!agentId) continue;
+      const key = `agent:${agentId}:${agentRest}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const label =
+        agent?.identity?.name?.trim() ||
+        agent?.identity?.avatarUrl?.trim() ||
+        (typeof (agent as any)?.name === "string" ? (agent as any).name.trim() : "") ||
+        agentId;
+      options.push({ key, label });
+    }
+  }
+
   if (options.length === 0) {
     return [{ key: current, label: current }];
   }

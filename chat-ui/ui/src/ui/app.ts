@@ -79,6 +79,7 @@ import {
 } from "./app-tool-stream.ts";
 import { resolveInjectedAssistantIdentity } from "./assistant-identity.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
+import { loadAgents as loadAgentsInternal } from "./controllers/agents.ts";
 import { getLocale, t } from "./i18n.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
@@ -759,6 +760,8 @@ export class OpenClawApp extends LitElement {
     this.bindUpdateState();
     this.bindFeishuPairingState();
     void this.refreshInstalledSkills();
+    // Load agents for chat UI (agent-prefixed session keys).
+    void loadAgentsInternal(this as unknown as Parameters<typeof loadAgentsInternal>[0]);
   }
 
   protected firstUpdated() {
