@@ -124,6 +124,12 @@ export const icons = {
       <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
     </svg>
   `,
+  camera: html`
+    <svg viewBox="0 0 24 24">
+      <path d="M14 4h-4l-1.5 2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2.5L14 4z" />
+      <circle cx="12" cy="12.5" r="3.5" />
+    </svg>
+  `,
   search: html`
     <svg viewBox="0 0 24 24">
       <circle cx="11" cy="11" r="8" />

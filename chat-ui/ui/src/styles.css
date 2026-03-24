@@ -26,9 +26,9 @@
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: rgba(18, 20, 26, 0.72);
-  color: var(--muted-foreground);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(244, 244, 245, 0.92);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -37,9 +37,9 @@
 
 .chat-copy-btn:hover,
 .chat-screenshot-btn:hover {
-  border-color: var(--border-hover);
+  border-color: rgba(255, 255, 255, 0.34);
   color: var(--text-strong);
-  background: rgba(26, 29, 37, 0.88);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .chat-screenshot-btn__icon {
@@ -53,9 +53,10 @@
   height: 14px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 2;
+  stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
+  opacity: 0.96;
 }
 
 .chat-screenshot-btn[data-done="1"] {
