@@ -5,6 +5,7 @@ import type { MessageGroup } from "../types/chat-types.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
 import { detectTextDirection } from "../text-direction.ts";
 import { renderCopyAsMarkdownButton } from "./copy-as-markdown.ts";
+import { renderBubbleScreenshotButton } from "./screenshot.ts";
 import {
   extractTextCached,
   extractThinkingCached,
@@ -366,7 +367,10 @@ function renderGroupedMessage(
 
   return html`
     <div class="${bubbleClasses}">
-      ${canCopyMarkdown ? renderCopyAsMarkdownButton(markdown!) : nothing}
+      <div class="chat-bubble-actions">
+        ${canCopyMarkdown ? renderCopyAsMarkdownButton(markdown!) : nothing}
+        ${renderBubbleScreenshotButton()}
+      </div>
       ${renderMessageImages(images)}
       ${
         reasoningMarkdown
