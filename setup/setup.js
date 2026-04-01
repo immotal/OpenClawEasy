@@ -39,9 +39,9 @@
 
   // Moonshot 子平台各自的 URL
   const SUB_PLATFORM_URLS = {
-    "moonshot-cn": "https://platform.moonshot.cn?utm_source=oneclaw",
-    "moonshot-ai": "https://platform.moonshot.ai?utm_source=oneclaw",
-    "kimi-code": "https://kimi.com/code?utm_source=oneclaw",
+    "moonshot-cn": "https://platform.moonshot.cn",
+    "moonshot-ai": "https://platform.moonshot.ai",
+    "kimi-code": "https://kimi.com/code",
   };
 
   // Kimi Code 子平台使用独立模型列表

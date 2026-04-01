@@ -82,6 +82,11 @@ import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./contro
 import { loadAgents as loadAgentsInternal } from "./controllers/agents.ts";
 import { getLocale, t } from "./i18n.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
+import {
+  loadChatArchives,
+  saveChatArchive,
+  type ChatArchiveEntry,
+} from "./chat-archives.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
 
 declare global {
@@ -440,6 +445,9 @@ export class OpenClawApp extends LitElement {
     feishuPairingApproving: { state: true },
     feishuPairingRejecting: { state: true },
     settingsTabHint: { state: true },
+    chatArchives: { state: true },
+    historyPanelOpen: { state: true },
+    historySelectedArchiveId: { state: true },
   };
 
   // 兼容 class field 的 define 语义：回灌实例字段到 Lit accessor，恢复响应式更新。
@@ -729,6 +737,9 @@ export class OpenClawApp extends LitElement {
   feishuPairingApproving = false;
   feishuPairingRejecting = false;
   settingsTabHint: "channels" | null = null;
+  chatArchives: ChatArchiveEntry[] = loadChatArchives();
+  historyPanelOpen = false;
+  historySelectedArchiveId: string | null = this.chatArchives[0]?.id ?? null;
   private sharePromptSendCount = 0;
   private sharePromptShownVersions = new Set<number>();
   private sharePromptCheckInFlight = false;
@@ -1593,6 +1604,64 @@ export class OpenClawApp extends LitElement {
     const newRatio = Math.max(0.4, Math.min(0.7, ratio));
     this.splitRatio = newRatio;
     this.applySettings({ ...this.settings, splitRatio: newRatio });
+  }
+
+  archiveCurrentConversation() {
+    const source = Array.isArray(this.chatMessages) ? this.chatMessages : [];
+    if (source.length === 0) {
+      return;
+    }
+    const hasMeaningfulContent = source.some((entry) => {
+      if (typeof entry === "string") {
+        return entry.trim().length > 0;
+      }
+      if (!entry || typeof entry !== "object") {
+        return false;
+      }
+      const row = entry as Record<string, unknown>;
+      if (typeof row.content === "string" && row.content.trim().length > 0) {
+        return true;
+      }
+      if (Array.isArray(row.content)) {
+        return row.content.some((part) => {
+          if (!part || typeof part !== "object") {
+            return false;
+          }
+          const block = part as Record<string, unknown>;
+          return typeof block.text === "string" && block.text.trim().length > 0;
+        });
+      }
+      return false;
+    });
+    if (!hasMeaningfulContent) {
+      return;
+    }
+    const sessionRow = this.sessionsResult?.sessions?.find((row) => row.key === this.sessionKey);
+    const label =
+      sessionRow?.displayName?.trim() || sessionRow?.label?.trim() || this.sessionKey;
+    this.chatArchives = saveChatArchive({
+      sessionKey: this.sessionKey,
+      label,
+      messages: source,
+    });
+    if (!this.historySelectedArchiveId) {
+      this.historySelectedArchiveId = this.chatArchives[0]?.id ?? null;
+    }
+  }
+
+  openHistoryPanel() {
+    this.historyPanelOpen = true;
+    if (!this.historySelectedArchiveId) {
+      this.historySelectedArchiveId = this.chatArchives[0]?.id ?? null;
+    }
+  }
+
+  closeHistoryPanel() {
+    this.historyPanelOpen = false;
+  }
+
+  selectHistoryArchive(id: string) {
+    this.historySelectedArchiveId = id;
   }
 
   render() {

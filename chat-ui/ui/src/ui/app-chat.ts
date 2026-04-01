@@ -22,6 +22,7 @@ export type ChatHost = {
   hello: GatewayHelloOk | null;
   chatAvatarUrl: string | null;
   refreshSessionsAfterChat: Set<string>;
+  archiveCurrentConversation?: () => void;
 };
 
 export const CHAT_SESSIONS_ACTIVE_MINUTES = 120;
@@ -193,6 +194,9 @@ export async function handleSendChat(
   }
 
   const refreshSessions = isChatResetCommand(message);
+  if (refreshSessions) {
+    host.archiveCurrentConversation?.();
+  }
   if (messageOverride == null) {
     host.chatMessage = "";
     // Clear attachments when sending

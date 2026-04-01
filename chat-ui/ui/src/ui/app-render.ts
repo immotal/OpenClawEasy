@@ -15,6 +15,9 @@ import { renderSidebar } from "./sidebar.ts";
 import { renderChat } from "./views/chat.ts";
 import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
+import type { ChatArchiveEntry } from "./chat-archives.ts";
+import { extractToolCards } from "./chat/tool-cards.ts";
+import type { ToolCard } from "./types/chat-types.ts";
 
 declare global {
   interface Window {
@@ -223,6 +226,235 @@ function confirmAndCreateNewSession(state: AppViewState) {
   }
   setOneClawView(state, "chat");
   return state.handleSendChat("/new", { restoreDraft: true });
+}
+
+function formatArchiveTime(ts: number): string {
+  try {
+    return new Intl.DateTimeFormat(getLocale() === "zh" ? "zh-CN" : "en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(ts));
+  } catch {
+    return new Date(ts).toLocaleString();
+  }
+}
+
+function renderHistoryPanel(state: AppViewState) {
+  if (!(state as any).historyPanelOpen) {
+    return nothing;
+  }
+  const archives = (((state as any).chatArchives as ChatArchiveEntry[] | undefined) ?? []).slice();
+  const selectedId = ((state as any).historySelectedArchiveId as string | null) ?? null;
+  const selected = archives.find((entry) => entry.id === selectedId) ?? archives[0] ?? null;
+  const close = () => (state as any).closeHistoryPanel?.();
+
+  return html`
+    <div class="history-panel-overlay" @click=${close}>
+      <section class="history-panel" @click=${(e: Event) => e.stopPropagation()}>
+        <header class="history-panel__header">
+          <div>
+            <div class="history-panel__title">${t("sidebar.history")}</div>
+            <div class="history-panel__subtitle">${t("sidebar.historySubtitle")}</div>
+          </div>
+          <button
+            class="history-panel__close"
+            type="button"
+            @click=${close}
+            aria-label=${t("chat.exitFocus")}
+            title=${t("chat.exitFocus")}
+          >
+            ${icons.x}
+          </button>
+        </header>
+        <div class="history-panel__body">
+          <aside class="history-panel__list">
+            ${
+              archives.length === 0
+                ? html`<div class="history-panel__empty">${t("sidebar.historyEmpty")}</div>`
+                : archives.map(
+                    (entry) => html`
+                      <button
+                        class="history-panel__item ${selected?.id === entry.id ? "is-active" : ""}"
+                        type="button"
+                        @click=${() => (state as any).selectHistoryArchive?.(entry.id)}
+                      >
+                        <div class="history-panel__item-title">${entry.label}</div>
+                        <div class="history-panel__item-meta">
+                          <span>${formatArchiveTime(entry.archivedAt)}</span>
+                          <span>${entry.messageCount} msgs</span>
+                        </div>
+                        <div class="history-panel__item-preview">${entry.preview}</div>
+                      </button>
+                    `,
+                  )
+            }
+          </aside>
+          <div class="history-panel__detail">
+            ${
+              selected
+                ? html`
+                    <div class="history-panel__detail-head">
+                      <div class="history-panel__detail-title">${selected.label}</div>
+                      <div class="history-panel__detail-meta">
+                        <span>${t("sidebar.agent")}: ${selected.sessionKey}</span>
+                        <span>${formatArchiveTime(selected.archivedAt)}</span>
+                      </div>
+                    </div>
+                    <div class="history-panel__messages">
+                      ${selected.messages.map((message, idx) =>
+                        renderArchivedMessageBubble(message, `${selected.id}:${idx}`),
+                      )}
+                    </div>
+                  `
+                : html`<div class="history-panel__empty">${t("sidebar.historyEmpty")}</div>`
+            }
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderArchivedMessageBubble(message: unknown, key: string) {
+  const row = (message ?? {}) as Record<string, unknown>;
+  const roleRaw = typeof row.role === "string" ? row.role : "assistant";
+  const role = roleRaw.toLowerCase();
+  const who =
+    role === "user" ? t("sender.you") : role === "system" ? t("sender.system") : t("sender.assistant");
+  const text = extractArchiveText(message);
+  const toolCards = extractToolCards(message);
+  const hasText = text.length > 0;
+  const hasTools = toolCards.length > 0;
+  const className = role === "user" ? "history-bubble history-bubble--user" : "history-bubble";
+  const shouldCollapseToolRound = hasTools && role !== "user" && role !== "system";
+  return html`
+    <article class="history-message" data-key=${key}>
+      <div class="history-message__meta">${who}</div>
+      ${
+        shouldCollapseToolRound
+          ? renderArchiveToolRound(toolCards, {
+              extraText: hasText ? text : null,
+            })
+          : hasText
+            ? html`<div class=${className}>${text}</div>`
+            : nothing
+      }
+      ${hasTools && !shouldCollapseToolRound ? renderArchiveToolRound(toolCards) : nothing}
+      ${!hasText && !hasTools ? html`<div class=${className}>…</div>` : nothing}
+    </article>
+  `;
+}
+
+function renderArchiveToolRound(
+  cards: ToolCard[],
+  opts?: {
+    extraText?: string | null;
+  },
+) {
+  const calls = cards.filter((card) => card.kind === "call");
+  const results = cards.filter((card) => card.kind === "result");
+  const title = `Tool activity · ${calls.length} calls · ${results.length} results`;
+  const extraText = opts?.extraText?.trim() || "";
+  return html`
+    <details class="history-tools">
+      <summary class="history-tools__summary">${title}</summary>
+      <div class="history-tools__list">
+        ${
+          extraText
+            ? html`
+                <div class="history-tools__extra-text">
+                  ${extraText}
+                </div>
+              `
+            : nothing
+        }
+        ${cards.map((card, idx) => {
+          const isCall = card.kind === "call";
+          const preview = isCall
+            ? summarizeToolValue(card.args)
+            : card.text && card.text.trim()
+              ? compactArchiveText(card.text)
+              : "Completed";
+          return html`
+            <div class="history-tools__item" data-tool-row=${String(idx)}>
+              <div class="history-tools__item-head">
+                <span class="history-tools__item-kind">${isCall ? "Call" : "Result"}</span>
+                <span class="history-tools__item-name">${card.name || "tool"}</span>
+              </div>
+              <div class="history-tools__item-preview">${preview}</div>
+            </div>
+          `;
+        })}
+      </div>
+    </details>
+  `;
+}
+
+function extractArchiveText(message: unknown): string {
+  if (typeof message === "string") {
+    return message.trim();
+  }
+  if (!message || typeof message !== "object") {
+    return "";
+  }
+  const row = message as Record<string, unknown>;
+  const content = row.content;
+  if (typeof content === "string") {
+    return content.trim();
+  }
+  if (Array.isArray(content)) {
+    const chunks: string[] = [];
+    for (const item of content) {
+      if (!item || typeof item !== "object") {
+        continue;
+      }
+      const part = item as Record<string, unknown>;
+      const type = typeof part.type === "string" ? part.type.toLowerCase() : "";
+      const isToolType =
+        type === "toolcall" ||
+        type === "tool_call" ||
+        type === "tooluse" ||
+        type === "tool_use" ||
+        type === "toolresult" ||
+        type === "tool_result";
+      if (isToolType) {
+        continue;
+      }
+      if (typeof part.text === "string" && part.text.trim()) {
+        chunks.push(part.text.trim());
+      }
+    }
+    return chunks.join("\n\n");
+  }
+  return "";
+}
+
+function summarizeToolValue(value: unknown): string {
+  if (value == null) {
+    return "No arguments";
+  }
+  if (typeof value === "string") {
+    return compactArchiveText(value);
+  }
+  try {
+    const json = JSON.stringify(value);
+    return compactArchiveText(json);
+  } catch {
+    return "Arguments";
+  }
+}
+
+function compactArchiveText(input: string): string {
+  const normalized = input.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (normalized.length <= 220) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 217)}...`;
 }
 
 async function handleRefreshChat(state: AppViewState) {
@@ -724,11 +956,7 @@ export function renderApp(state: AppViewState) {
             },
             onOpenWebUI: () => void handleOpenWebUI(state),
             onOpenDocs: () => {
-              if (window.oneclaw?.openExternal) {
-                window.oneclaw.openExternal("https://openclaw.ai/");
-              } else {
-                window.open("https://openclaw.ai/", "_blank");
-              }
+              (state as any).openHistoryPanel?.();
             },
             onApplyUpdate: () => void handleApplyUpdate(state),
           })}
@@ -824,6 +1052,7 @@ export function renderApp(state: AppViewState) {
 
       ${renderExecApprovalPrompt(state)}
       ${renderGatewayUrlConfirmation(state)}
+      ${renderHistoryPanel(state)}
     </div>
   `;
 }

@@ -167,8 +167,8 @@ export function renderSidebar(props: SidebarProps) {
               closeMoreMenu(event);
               props.onOpenDocs();
             }}>
-              <span class="oneclaw-sidebar__icon">${icons.book}</span>
-              <span>${t("sidebar.docs")}</span>
+              <span class="oneclaw-sidebar__icon">${icons.fileText}</span>
+              <span>${t("sidebar.history")}</span>
             </button>
             <button class="oneclaw-sidebar__more-item" type="button" @click=${(event: Event) => {
               closeMoreMenu(event);
@@ -242,10 +242,10 @@ export function renderSidebar(props: SidebarProps) {
           class="oneclaw-sidebar__item"
           type="button"
           @click=${props.onOpenDocs}
-          title=${t("sidebar.docs")}
+          title=${t("sidebar.history")}
         >
-          <span class="oneclaw-sidebar__icon">${icons.book}</span>
-          <span class="oneclaw-sidebar__label">${t("sidebar.docs")}</span>
+          <span class="oneclaw-sidebar__icon">${icons.fileText}</span>
+          <span class="oneclaw-sidebar__label">${t("sidebar.history")}</span>
         </button>
 
         <div class="oneclaw-sidebar__status-row">
