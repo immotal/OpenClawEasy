@@ -383,6 +383,12 @@ type ExportConversationItem = {
 };
 
 type ExportFormat = "markdown" | "html" | "pdf" | "png";
+type ExplorerNode = {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  hasChildren?: boolean;
+};
 
 function collectSkillsFromBase(
   baseDir: string,
@@ -504,6 +510,43 @@ function resolveExportExtension(format: ExportFormat): string {
   if (format === "html") return "html";
   if (format === "pdf") return "pdf";
   return "png";
+}
+
+const EXPLORER_DEFAULT_MAX_BYTES = 200 * 1024;
+
+function listExplorerChildren(dirPath: string): ExplorerNode[] {
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+    .sort((a, b) => {
+      if (a.isDirectory() && !b.isDirectory()) return -1;
+      if (!a.isDirectory() && b.isDirectory()) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  const nodes: ExplorerNode[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      let hasChildren = false;
+      try {
+        hasChildren = fs.readdirSync(fullPath).length > 0;
+      } catch {
+        hasChildren = false;
+      }
+      nodes.push({
+        name: entry.name,
+        path: fullPath,
+        type: "directory",
+        hasChildren,
+      });
+    } else if (entry.isFile()) {
+      nodes.push({
+        name: entry.name,
+        path: fullPath,
+        type: "file",
+        hasChildren: false,
+      });
+    }
+  }
+  return nodes;
 }
 
 function escapeHtml(value: string): string {
@@ -873,6 +916,108 @@ ipcMain.handle("app:choose-export-directory", async () => {
     return { success: false, cancelled: true };
   }
   return { success: true, path: selected.filePaths[0] };
+});
+ipcMain.handle("app:choose-explorer-directory", async () => {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  const selected = focusedWindow
+    ? await dialog.showOpenDialog(focusedWindow, {
+      title: "Choose folder",
+      properties: ["openDirectory"],
+    })
+    : await dialog.showOpenDialog({
+    title: "Choose folder",
+    properties: ["openDirectory"],
+  });
+  if (selected.canceled || selected.filePaths.length === 0) {
+    return { success: false, cancelled: true };
+  }
+  return { success: true, path: selected.filePaths[0] };
+});
+ipcMain.handle("app:list-explorer-tree", async (_e, payload: unknown) => {
+  try {
+    const body = payload && typeof payload === "object"
+      ? (payload as { rootPath?: string })
+      : {};
+    const rootPath = String(body.rootPath || "").trim();
+    if (!rootPath) {
+      throw new Error("Missing root path");
+    }
+    if (!fs.existsSync(rootPath) || !fs.statSync(rootPath).isDirectory()) {
+      throw new Error("Selected path is not a directory");
+    }
+    return {
+      success: true,
+      data: {
+        rootPath,
+        nodes: listExplorerChildren(rootPath),
+      },
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || String(err),
+    };
+  }
+});
+ipcMain.handle("app:list-explorer-children", async (_e, payload: unknown) => {
+  try {
+    const body = payload && typeof payload === "object"
+      ? (payload as { directoryPath?: string })
+      : {};
+    const directoryPath = String(body.directoryPath || "").trim();
+    if (!directoryPath) {
+      throw new Error("Missing directory path");
+    }
+    if (!fs.existsSync(directoryPath) || !fs.statSync(directoryPath).isDirectory()) {
+      throw new Error("Selected path is not a directory");
+    }
+    return {
+      success: true,
+      data: {
+        directoryPath,
+        nodes: listExplorerChildren(directoryPath),
+      },
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || String(err),
+    };
+  }
+});
+ipcMain.handle("app:read-explorer-file", async (_e, payload: unknown) => {
+  try {
+    const body = payload && typeof payload === "object"
+      ? (payload as { filePath?: string; maxBytes?: number })
+      : {};
+    const filePath = String(body.filePath || "").trim();
+    if (!filePath) {
+      throw new Error("Missing file path");
+    }
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      throw new Error("Selected path is not a file");
+    }
+    const rawMax = Number(body.maxBytes);
+    const maxBytes = Number.isFinite(rawMax) && rawMax > 0
+      ? Math.min(Math.floor(rawMax), 1024 * 1024)
+      : EXPLORER_DEFAULT_MAX_BYTES;
+    const buffer = fs.readFileSync(filePath);
+    const truncated = buffer.byteLength > maxBytes;
+    const content = buffer.subarray(0, maxBytes).toString("utf8");
+    return {
+      success: true,
+      data: {
+        filePath,
+        content,
+        truncated,
+      },
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || String(err),
+    };
+  }
 });
 ipcMain.handle("app:export-conversations", async (_e, payload: unknown) => {
   try {

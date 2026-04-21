@@ -36,9 +36,21 @@ declare global {
       }) => Promise<unknown>;
       chooseExportDirectory?: () => Promise<unknown>;
       exportConversations?: (params: unknown) => Promise<unknown>;
+      chooseExplorerDirectory?: () => Promise<unknown>;
+      listExplorerTree?: (params: { rootPath: string }) => Promise<unknown>;
+      readExplorerFile?: (params: { filePath: string; maxBytes?: number }) => Promise<unknown>;
     };
   }
 }
+
+type ExplorerNode = {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  hasChildren?: boolean;
+  children?: ExplorerNode[];
+  childrenLoaded?: boolean;
+};
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -898,6 +910,122 @@ function renderFeishuPairingNotice(state: AppViewState) {
   `;
 }
 
+function renderExplorerTree(
+  state: AppViewState,
+  nodes: ExplorerNode[],
+  depth = 0,
+  parentPath = "",
+) {
+  return nodes.map((node) => {
+    const isDir = node.type === "directory";
+    const relPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+    const selected = !isDir && state.explorerActiveFilePath === node.path;
+    const expanded = isDir ? state.isExplorerDirExpanded(node.path) : false;
+    const hasChildren = isDir ? node.hasChildren !== false : false;
+    const loading = isDir ? state.isExplorerDirLoading(node.path) : false;
+    return html`
+      <div class="oneclaw-explorer-tree__row">
+        <button
+          class="oneclaw-explorer-tree__node ${selected ? "is-active" : ""} ${isDir ? "is-dir" : ""}"
+          type="button"
+          style=${`padding-left:${10 + depth * 14}px`}
+          title=${node.path}
+          @click=${() => {
+            if (isDir) {
+              if (!hasChildren) {
+                return;
+              }
+              void state.toggleExplorerDir(node.path);
+              return;
+            }
+            void state.openExplorerFile(node.path, node.name);
+          }}
+        >
+          ${isDir
+            ? `${expanded ? "📂" : "📁"} ${node.name}${loading ? " (loading...)" : ""}`
+            : `📄 ${relPath}`}
+        </button>
+      </div>
+      ${isDir && expanded && Array.isArray(node.children) && node.children.length > 0
+        ? renderExplorerTree(state, node.children, depth + 1, relPath)
+        : nothing}
+    `;
+  });
+}
+
+function renderExplorerPanel(state: AppViewState) {
+  if (!state.explorerPanelOpen) {
+    return html`
+      <button
+        class="oneclaw-explorer-open-handle"
+        type="button"
+        title="Open files panel"
+        aria-label="Open files panel"
+        @click=${() => state.toggleExplorerPanel()}
+      >
+        <span class="oneclaw-explorer-open-handle__label">文件系统</span>
+      </button>
+    `;
+  }
+  return html`
+    <aside class="oneclaw-explorer is-open">
+      <header class="oneclaw-explorer__header">
+        <button
+          class="oneclaw-explorer__toggle"
+          type="button"
+          @click=${() => state.toggleExplorerPanel()}
+          title="Close files panel"
+          aria-label="Close files panel"
+        >
+          <span class="oneclaw-explorer__toggle-x" aria-hidden="true">×</span>
+        </button>
+        <span class="oneclaw-explorer__title">Files</span>
+      </header>
+      <div class="oneclaw-explorer__actions">
+        <input
+          class="oneclaw-explorer__path"
+          type="text"
+          .value=${state.explorerPathInput}
+          placeholder="Input folder path"
+          @input=${(event: Event) =>
+            state.setExplorerPathInput((event.target as HTMLInputElement).value)}
+        />
+        <div class="oneclaw-explorer__btns">
+          <button class="btn" type="button" @click=${() => void state.chooseExplorerFolder()}>
+            Choose
+          </button>
+          <button class="btn" type="button" @click=${() => void state.refreshExplorerTree()}>
+            Refresh
+          </button>
+          <button class="btn" type="button" @click=${() => state.collapseAllExplorerDirs()}>
+            Collapse all
+          </button>
+        </div>
+        <div class="oneclaw-explorer__root">${state.explorerRootPath || "No folder selected"}</div>
+      </div>
+      <div class="oneclaw-explorer__tree">
+        ${
+          state.explorerLoading
+            ? html`<div class="muted">Loading...</div>`
+            : state.explorerTree.length > 0
+              ? renderExplorerTree(state, state.explorerTree)
+              : html`<div class="muted">No files</div>`
+        }
+      </div>
+      <div class="oneclaw-explorer__preview">
+        <div class="oneclaw-explorer__preview-title">${state.explorerActiveFileName || "File content"}</div>
+        <div class="oneclaw-explorer__preview-path">${state.explorerActiveFilePath}</div>
+        <pre class="oneclaw-explorer__preview-content">${
+          state.explorerFileTruncated
+            ? `${state.explorerFileContent}\n\n[Truncated: file too large]`
+            : (state.explorerFileContent || "Click a file to preview.")
+        }</pre>
+      </div>
+      ${state.explorerError ? html`<div class="oneclaw-explorer__error">${state.explorerError}</div>` : nothing}
+    </aside>
+  `;
+}
+
 export function renderApp(state: AppViewState) {
   const chatDisabledReason = state.connected ? null : t("error.disconnected");
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
@@ -983,13 +1111,14 @@ export function renderApp(state: AppViewState) {
             : nothing
         }
 
-        <main class="oneclaw-content">
-          ${renderFeishuPairingNotice(state)}
-          ${settingsActive
-            ? renderOneClawSettingsPage(state)
-            : skillsActive
-              ? renderOneClawSkillsPage(state)
-            : html`
+        <div class="oneclaw-workspace">
+          <main class="oneclaw-content">
+            ${renderFeishuPairingNotice(state)}
+            ${settingsActive
+              ? renderOneClawSettingsPage(state)
+              : skillsActive
+                ? renderOneClawSkillsPage(state)
+              : html`
                 ${renderChat({
                   sessionKey: state.sessionKey,
                   onSessionKeyChange: (next) => applySessionKey(state, next),
@@ -1047,7 +1176,9 @@ export function renderApp(state: AppViewState) {
                   assistantAvatar: state.assistantAvatar,
                 })}
               `}
-        </main>
+          </main>
+          ${chatActive ? renderExplorerPanel(state) : nothing}
+        </div>
       </div>
 
       ${renderExecApprovalPrompt(state)}

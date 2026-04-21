@@ -14,8 +14,23 @@
     <div class="progress-fill" id="progressFill"></div>
   </div>
 
-  <!-- 步骤容器 -->
-  <div class="steps-container" id="stepsContainer">
+  <div class="setup-layout">
+    <aside class="file-sidebar collapsed" id="fileSidebar">
+      <div class="file-sidebar-header">
+        <button class="sidebar-toggle-btn" id="btnToggleSidebar" type="button" title="Toggle sidebar">☰</button>
+        <span class="sidebar-title">File Explorer</span>
+      </div>
+      <div class="file-actions">
+        <button class="btn-secondary file-action-btn" id="btnChooseFolder" type="button">Choose Folder</button>
+        <button class="btn-secondary file-action-btn" id="btnReloadTree" type="button">Refresh</button>
+      </div>
+      <div class="sidebar-path" id="sidebarPath">No folder selected</div>
+      <div class="file-tree" id="fileTree"></div>
+    </aside>
+
+    <div class="setup-main">
+      <!-- 步骤容器 -->
+      <div class="steps-container" id="stepsContainer">
 
     <!-- Step 1: 欢迎页 -->
     <section class="step active" id="step1">
@@ -242,7 +257,17 @@
       </div>
     </section>
 
+      </div>
+    </div>
   </div>
+
+  <section class="file-preview" id="filePreviewPanel">
+    <div class="file-preview-header">
+      <strong id="previewFileName">File Content</strong>
+      <span id="previewFilePath"></span>
+    </div>
+    <pre class="file-preview-content" id="filePreviewContent">Click a file to preview its content.</pre>
+  </section>
 
   <script src="setup.js"></script>
 </body>

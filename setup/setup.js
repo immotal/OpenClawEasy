@@ -164,6 +164,16 @@
     doneStatus: $("#doneStatus"),
     launchAtLoginRow: $("#launchAtLoginRow"),
     launchAtLoginEnabled: $("#launchAtLoginEnabled"),
+    // 文件侧边栏
+    fileSidebar: $("#fileSidebar"),
+    btnToggleSidebar: $("#btnToggleSidebar"),
+    btnChooseFolder: $("#btnChooseFolder"),
+    btnReloadTree: $("#btnReloadTree"),
+    sidebarPath: $("#sidebarPath"),
+    fileTree: $("#fileTree"),
+    previewFileName: $("#previewFileName"),
+    previewFilePath: $("#previewFilePath"),
+    filePreviewContent: $("#filePreviewContent"),
   };
 
   // ---- 状态 ----
@@ -173,6 +183,8 @@
   let starting = false;
   let currentLang = "en";
   let launchAtLoginSupported = false;
+  let explorerRootPath = "";
+  let activePreviewPath = "";
 
   // ---- 语言检测（从 URL ?lang= 参数读取） ----
   function detectLang() {
@@ -472,6 +484,97 @@
     els.doneStatus.classList.toggle("error", !!isError);
   }
 
+  function renderTree(nodes, parentPath, depth) {
+    const frag = document.createDocumentFragment();
+    (nodes || []).forEach((node) => {
+      const nodeBtn = document.createElement("button");
+      nodeBtn.type = "button";
+      nodeBtn.className = "file-tree-node";
+      nodeBtn.style.paddingLeft = `${6 + depth * 14}px`;
+      const isDir = node.type === "directory";
+      const relPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+      nodeBtn.textContent = isDir ? `📁 ${node.name}` : `📄 ${relPath}`;
+      nodeBtn.title = node.path;
+
+      if (isDir) {
+        nodeBtn.disabled = true;
+      } else {
+        if (node.path === activePreviewPath) {
+          nodeBtn.classList.add("file-active");
+        }
+        nodeBtn.addEventListener("click", () => {
+          readAndPreviewFile(node.path, node.name);
+        });
+      }
+      frag.appendChild(nodeBtn);
+
+      if (isDir && Array.isArray(node.children) && node.children.length > 0) {
+        frag.appendChild(renderTree(node.children, relPath, depth + 1));
+      }
+    });
+    return frag;
+  }
+
+  async function loadExplorerTree(rootPath) {
+    if (!window.oneclaw?.listExplorerTree) {
+      els.fileTree.textContent = "File explorer is not available in this build.";
+      return;
+    }
+    els.fileTree.textContent = "Loading...";
+    const result = await window.oneclaw.listExplorerTree({ rootPath });
+    if (!result?.success) {
+      els.fileTree.textContent = result?.message || "Failed to load file tree.";
+      return;
+    }
+    const nodes = result?.data?.nodes || [];
+    els.fileTree.innerHTML = "";
+    if (!nodes.length) {
+      els.fileTree.textContent = "No files found.";
+      return;
+    }
+    els.fileTree.appendChild(renderTree(nodes, "", 0));
+  }
+
+  async function readAndPreviewFile(filePath, displayName) {
+    if (!window.oneclaw?.readExplorerFile) {
+      return;
+    }
+    activePreviewPath = filePath;
+    const result = await window.oneclaw.readExplorerFile({ filePath });
+    if (!result?.success) {
+      els.filePreviewContent.textContent = result?.message || "Failed to read file.";
+      return;
+    }
+    const content = result?.data?.content ?? "";
+    const truncated = result?.data?.truncated === true;
+    els.previewFileName.textContent = displayName || "File Content";
+    els.previewFilePath.textContent = filePath;
+    els.filePreviewContent.textContent = truncated
+      ? `${content}\n\n[Truncated: file is too large]`
+      : content;
+    if (explorerRootPath) {
+      loadExplorerTree(explorerRootPath);
+    }
+  }
+
+  async function chooseExplorerFolder() {
+    if (!window.oneclaw?.chooseExplorerDirectory) {
+      els.sidebarPath.textContent = "File explorer is not available in this build.";
+      return;
+    }
+    const result = await window.oneclaw.chooseExplorerDirectory();
+    if (!result?.success || !result.path) {
+      return;
+    }
+    explorerRootPath = result.path;
+    activePreviewPath = "";
+    els.sidebarPath.textContent = explorerRootPath;
+    els.previewFileName.textContent = "File Content";
+    els.previewFilePath.textContent = "";
+    els.filePreviewContent.textContent = "Click a file to preview its content.";
+    await loadExplorerTree(explorerRootPath);
+  }
+
   // ---- 事件绑定 ----
   function bindEvents() {
     els.btnToStep2.addEventListener("click", () => goToStep(2));
@@ -511,6 +614,23 @@
 
     // Step 3 — 完成
     els.btnStart.addEventListener("click", handleComplete);
+
+    // 文件侧边栏
+    if (els.btnToggleSidebar) {
+      els.btnToggleSidebar.addEventListener("click", () => {
+        els.fileSidebar.classList.toggle("collapsed");
+      });
+    }
+    if (els.btnChooseFolder) {
+      els.btnChooseFolder.addEventListener("click", chooseExplorerFolder);
+    }
+    if (els.btnReloadTree) {
+      els.btnReloadTree.addEventListener("click", () => {
+        if (explorerRootPath) {
+          loadExplorerTree(explorerRootPath);
+        }
+      });
+    }
   }
 
   // ---- 初始化 ----

@@ -216,6 +216,35 @@ type OneClawBridge = {
     data?: { files?: string[] };
     message?: string;
   }>;
+  chooseExplorerDirectory?: () => Promise<{
+    success?: boolean;
+    cancelled?: boolean;
+    path?: string;
+  }>;
+  listExplorerTree?: (params: { rootPath: string }) => Promise<{
+    success?: boolean;
+    data?: { rootPath?: string; nodes?: ExplorerNode[] };
+    message?: string;
+  }>;
+  listExplorerChildren?: (params: { directoryPath: string }) => Promise<{
+    success?: boolean;
+    data?: { directoryPath?: string; nodes?: ExplorerNode[] };
+    message?: string;
+  }>;
+  readExplorerFile?: (params: { filePath: string; maxBytes?: number }) => Promise<{
+    success?: boolean;
+    data?: { filePath?: string; content?: string; truncated?: boolean };
+    message?: string;
+  }>;
+};
+
+type ExplorerNode = {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  hasChildren?: boolean;
+  children?: ExplorerNode[];
+  childrenLoaded?: boolean;
 };
 
 const SHARE_PROMPT_STORE_KEY = "openclaw.share.prompt.v1";
@@ -448,6 +477,18 @@ export class OpenClawApp extends LitElement {
     chatArchives: { state: true },
     historyPanelOpen: { state: true },
     historySelectedArchiveId: { state: true },
+    explorerPanelOpen: { state: true },
+    explorerRootPath: { state: true },
+    explorerPathInput: { state: true },
+    explorerLoading: { state: true },
+    explorerError: { state: true },
+    explorerTree: { state: true },
+    explorerExpandedDirs: { state: true },
+    explorerLoadingDirs: { state: true },
+    explorerActiveFilePath: { state: true },
+    explorerActiveFileName: { state: true },
+    explorerFileContent: { state: true },
+    explorerFileTruncated: { state: true },
   };
 
   // 兼容 class field 的 define 语义：回灌实例字段到 Lit accessor，恢复响应式更新。
@@ -740,6 +781,18 @@ export class OpenClawApp extends LitElement {
   chatArchives: ChatArchiveEntry[] = loadChatArchives();
   historyPanelOpen = false;
   historySelectedArchiveId: string | null = this.chatArchives[0]?.id ?? null;
+  explorerPanelOpen = false;
+  explorerRootPath = "";
+  explorerPathInput = "";
+  explorerLoading = false;
+  explorerError: string | null = null;
+  explorerTree: ExplorerNode[] = [];
+  explorerExpandedDirs: string[] = [];
+  explorerLoadingDirs: string[] = [];
+  explorerActiveFilePath = "";
+  explorerActiveFileName = "";
+  explorerFileContent = "";
+  explorerFileTruncated = false;
   private sharePromptSendCount = 0;
   private sharePromptShownVersions = new Set<number>();
   private sharePromptCheckInFlight = false;
@@ -1662,6 +1715,181 @@ export class OpenClawApp extends LitElement {
 
   selectHistoryArchive(id: string) {
     this.historySelectedArchiveId = id;
+  }
+
+  toggleExplorerPanel() {
+    this.explorerPanelOpen = !this.explorerPanelOpen;
+  }
+
+  setExplorerPathInput(next: string) {
+    this.explorerPathInput = next;
+  }
+
+  async chooseExplorerFolder() {
+    const bridge = this.getOneClawBridge();
+    if (!bridge?.chooseExplorerDirectory) {
+      this.explorerError = "Explorer bridge is unavailable.";
+      return;
+    }
+    const result = await bridge.chooseExplorerDirectory();
+    if (!result?.success || !result.path) {
+      return;
+    }
+    this.explorerPathInput = result.path;
+    await this.loadExplorerTree(result.path);
+  }
+
+  async refreshExplorerTree() {
+    const rootPath = this.explorerPathInput.trim() || this.explorerRootPath.trim();
+    if (!rootPath) {
+      this.explorerError = "Please input a path first.";
+      return;
+    }
+    await this.loadExplorerTree(rootPath);
+  }
+
+  async loadExplorerTree(rootPath: string) {
+    const bridge = this.getOneClawBridge();
+    if (!bridge?.listExplorerTree) {
+      this.explorerError = "Explorer bridge is unavailable.";
+      return;
+    }
+    this.explorerLoading = true;
+    this.explorerError = null;
+    try {
+      const result = await bridge.listExplorerTree({ rootPath });
+      if (!result?.success) {
+        this.explorerTree = [];
+        this.explorerError = result?.message || "Failed to read directory.";
+        return;
+      }
+      this.explorerRootPath = String(result?.data?.rootPath || rootPath);
+      this.explorerPathInput = this.explorerRootPath;
+      const nodes = Array.isArray(result?.data?.nodes) ? result.data.nodes : [];
+      this.explorerTree = nodes.map((node) => ({
+        ...node,
+        children: node.type === "directory" ? [] : undefined,
+        childrenLoaded: false,
+      }));
+      this.explorerExpandedDirs = [this.explorerRootPath];
+      this.explorerLoadingDirs = [];
+    } catch (err: any) {
+      this.explorerTree = [];
+      this.explorerError = err?.message || String(err);
+    } finally {
+      this.explorerLoading = false;
+    }
+  }
+
+  async openExplorerFile(filePath: string, displayName: string) {
+    const bridge = this.getOneClawBridge();
+    if (!bridge?.readExplorerFile) {
+      this.explorerError = "Explorer bridge is unavailable.";
+      return;
+    }
+    try {
+      const result = await bridge.readExplorerFile({ filePath });
+      if (!result?.success) {
+        this.explorerError = result?.message || "Failed to read file.";
+        return;
+      }
+      this.explorerError = null;
+      this.explorerActiveFilePath = String(result?.data?.filePath || filePath);
+      this.explorerActiveFileName = displayName || this.explorerActiveFilePath;
+      this.explorerFileContent = String(result?.data?.content || "");
+      this.explorerFileTruncated = result?.data?.truncated === true;
+    } catch (err: any) {
+      this.explorerError = err?.message || String(err);
+    }
+  }
+
+  isExplorerDirExpanded(path: string) {
+    return this.explorerExpandedDirs.includes(path);
+  }
+
+  isExplorerDirLoading(path: string) {
+    return this.explorerLoadingDirs.includes(path);
+  }
+
+  async toggleExplorerDir(path: string) {
+    if (!path) {
+      return;
+    }
+    if (this.explorerExpandedDirs.includes(path)) {
+      this.explorerExpandedDirs = this.explorerExpandedDirs.filter((p) => p !== path);
+      return;
+    }
+    this.explorerExpandedDirs = [...this.explorerExpandedDirs, path];
+    await this.loadExplorerChildren(path);
+  }
+
+  collapseAllExplorerDirs() {
+    this.explorerExpandedDirs = [];
+  }
+
+  private patchExplorerChildren(
+    nodes: ExplorerNode[],
+    targetPath: string,
+    children: ExplorerNode[],
+  ): ExplorerNode[] {
+    return nodes.map((node) => {
+      if (node.type === "directory" && node.path === targetPath) {
+        return {
+          ...node,
+          children,
+          childrenLoaded: true,
+        };
+      }
+      if (node.type === "directory" && Array.isArray(node.children) && node.children.length > 0) {
+        return {
+          ...node,
+          children: this.patchExplorerChildren(node.children, targetPath, children),
+        };
+      }
+      return node;
+    });
+  }
+
+  async loadExplorerChildren(directoryPath: string) {
+    const bridge = this.getOneClawBridge();
+    if (!bridge?.listExplorerChildren || !directoryPath) {
+      return;
+    }
+    const alreadyLoaded = (nodes: ExplorerNode[]): boolean => {
+      for (const node of nodes) {
+        if (node.type === "directory" && node.path === directoryPath) {
+          return node.childrenLoaded === true;
+        }
+        if (node.type === "directory" && Array.isArray(node.children) && node.children.length > 0) {
+          if (alreadyLoaded(node.children)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    if (alreadyLoaded(this.explorerTree) || this.explorerLoadingDirs.includes(directoryPath)) {
+      return;
+    }
+    this.explorerLoadingDirs = [...this.explorerLoadingDirs, directoryPath];
+    try {
+      const result = await bridge.listExplorerChildren({ directoryPath });
+      if (!result?.success) {
+        this.explorerError = result?.message || "Failed to read child directory.";
+        return;
+      }
+      const nodes = Array.isArray(result?.data?.nodes) ? result.data.nodes : [];
+      const normalized = nodes.map((node) => ({
+        ...node,
+        children: node.type === "directory" ? [] : undefined,
+        childrenLoaded: false,
+      }));
+      this.explorerTree = this.patchExplorerChildren(this.explorerTree, directoryPath, normalized);
+    } catch (err: any) {
+      this.explorerError = err?.message || String(err);
+    } finally {
+      this.explorerLoadingDirs = this.explorerLoadingDirs.filter((p) => p !== directoryPath);
+    }
   }
 
   render() {
